@@ -8,6 +8,7 @@ sudo apt-get install git
 sudo apt-get install -y libgazebo11-dev
 cd ~/catkin_ws/src
 git clone https://github.com/ros-simulation/gazebo_ros_pkgs.git -b noetic-devel
+cd ..
 catkin_make
 rosdep update
 rosdep check --from-paths . --ignore-src --rosdistro noetic
@@ -19,5 +20,3 @@ cd ~/catkin_ws/src
 git clone https://github.com/mario-serna/pioneer_p3dx_model.git
 cd ..
 catkin_make
-cd ..
-source ~/catkin_ws/devel/setup.sh
