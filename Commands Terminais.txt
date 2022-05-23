@@ -1,0 +1,53 @@
+Terminal 1
+ssh pi@192.168.0.18
+roscore
+
+Terminal 2
+ssh pi@192.168.0.18
+rosrun p2os_driver p2os_driver _port:="/dev/ttyUSB0"
+
+Terminal 3
+ssh pi@192.168.0.18
+chmod a+rw /dev/ttyACM0
+rosrun urg_node urg_node /dev/ttyACM0
+
+Terminal 4
+ssh pi@192.168.0.18
+cd ~/catkin_ws
+source devel/setup.bash
+rosrun subscriber_python subscriber.py
+
+Terminal 5
+rosrun rviz rviz
+
+Dentro do rviz
+Gloval Options>Fixed Frame = laser
+adicionar LaserScan
+>topic = /scan
+
+
+
+.bashrc
+source ~/catkin_ws/devel/setup.bash
+export ROS_MASTER_URI=http://192.168.0.18:11311
+export ROS_HOSTNAME=192.168.0.115
+export ROS_IP=192.168.0.115
+
+Creating package catkin for python
+cd ~/catkin_ws/src
+catkin_create_pkg subscriber_python rospy roscpp
+cd ~/catkin_ws
+catkin_make
+source devel/setup.bash
+
+Rosbag
+rosbag record -a
+
+Transform laser base_link
+rosrun tf2_ros static_transform_publisher 0.1 0 0.2 0 0 0 base_link laser
+
+Useful Links
+https://www.theconstructsim.com/difference-run-code-ros-python-cpp/
+https://sudonull.com/post/21487-Mapping-and-localization-of-a-mobile-robot-in-ROS-without-odometry-using-laser_scan_matcher
+https://navigation.ros.org/setup_guides/transformation/setup_transforms.html
+http://wiki.ros.org/rviz/DisplayTypes/Odometry
