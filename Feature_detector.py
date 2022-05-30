@@ -108,11 +108,14 @@ def filter_segments(df, threshold_error,threshold_line):
     df = df[df['error_mse'] <= threshold_error]
     df = df[df['npoints'] >= threshold_npoints]
     df = df.sort_values(['phis_line','rs_line'])
-    df_diff = df[['phis_line', 'rs_line']].diff(periods=1)
+
+    #filter by similar angles and distance
+    df_diff = df[['phis_line', 'rs_line']].diff(periods=1)   
     df_diff = df_diff.rename(columns={'phis_line': 'phis_line_diff', 'rs_line': 'rs_line_diff'})
+    
     pd.concat([df, df_diff], axis=1)
     return df
-df_laser = load_bag('./23-05/2022-05-23-15-50-47.bag')
+df_laser = load_bag('2022-05-23-15-50-47.bag')
 
 rho, theta = laser_data_extraction(df_laser,100)
 start_time = time.time()
@@ -129,5 +132,5 @@ df = detect_lines(map,20,30,30,plot = False)
 print("--- %s seconds ---" % (time.time() - start_time))
 df = check_points_in_line(x,y,df,20)
 print("--- %s seconds ---" % (time.time() - start_time))
-df_filtered = filter_segments(df,5,10)
+df_filtered = filter_segments(df,200,10)
 
