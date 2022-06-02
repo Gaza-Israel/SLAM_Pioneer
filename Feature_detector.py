@@ -111,8 +111,11 @@ def filter_segments(df, threshold_error,threshold_line):
     df = df[df['error_mse'] <= threshold_error]
     df = df[df['npoints'] >= threshold_npoints]
     df = df.sort_values(['phis_line','rs_line'])
-    df_diff = df[['phis_line', 'rs_line']].diff(periods=1)
+
+    #filter by similar angles and distance
+    df_diff = df[['phis_line', 'rs_line']].diff(periods=1)   
     df_diff = df_diff.rename(columns={'phis_line': 'phis_line_diff', 'rs_line': 'rs_line_diff'})
+    
     pd.concat([df, df_diff], axis=1)
     return df
 
