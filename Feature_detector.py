@@ -40,7 +40,11 @@ def laser_data_extraction(df, idx):
 
 
 def polar2z(r, theta):
-    return r * np.exp(1j * theta)
+    zS = r * np.exp(1j * theta)
+    x = np.real(zS)
+    y = np.imag(zS)
+
+    return x, y
 
 
 def z2polar(x, y):
@@ -49,21 +53,31 @@ def z2polar(x, y):
 
 
 class feature_detector:
-    def __init__(self,laser_max_range,res_map, acc_th, min_line_lenght, max_line_gap, min_dist2line_th,max_intersection_distance) -> None:
+    def __init__(
+        self,
+        laser_max_range,
+        res_map,
+        acc_th,
+        min_line_lenght,
+        max_line_gap,
+        min_dist2line_th,
+        max_intersection_distance,
+    ) -> None:
         self.x_min = -laser_max_range - 0.8
         self.y_min = -laser_max_range - 0.8
         self.x_max = laser_max_range + 0.8
         self.y_max = laser_max_range + 0.8
         self.res_map = res_map
         self.acc_th = acc_th
-        self.min_line_lenght = np.round(min_line_lenght/self.res_map).astype(int)
-        self.max_line_gap = np.round(max_line_gap/self.res_map).astype(int)
-        self.min_dist2line_th = np.round(min_dist2line_th/self.res_map).astype(int)
-        self.max_intersection_distance = np.round(max_intersection_distance/self.res_map).astype(int)
+        self.min_line_lenght = np.round(min_line_lenght / self.res_map).astype(int)
+        self.max_line_gap = np.round(max_line_gap / self.res_map).astype(int)
+        self.min_dist2line_th = np.round(min_dist2line_th / self.res_map).astype(int)
+        self.max_intersection_distance = np.round(max_intersection_distance / self.res_map).astype(
+            int
+        )
         pass
 
-
-    def create_map(self,x, y):
+    def create_map(self, x, y):
         # create_map
         map_x = np.arange(self.x_min, self.x_max, self.res_map)
         map_y = np.arange(self.y_min, self.y_max, self.res_map)
@@ -75,12 +89,13 @@ class feature_detector:
         map[idx] = 1
         return map
 
-
-    def detect_lines(self,map, plot=False):
+    def detect_lines(self, map, plot=False):
         dst = np.array(map * 255).astype("uint8")
         element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
         dst = cv.dilate(dst, element)
-        linesP = cv.HoughLinesP(dst, 1, np.pi / 180, self.acc_th, None, self.min_line_lenght, self.max_line_gap)
+        linesP = cv.HoughLinesP(
+            dst, 1, np.pi / 180, self.acc_th, None, self.min_line_lenght, self.max_line_gap
+        )
         linesP = np.reshape(linesP, (linesP.shape[0], -1))
         v = np.array([linesP[:, 2] - linesP[:, 0], linesP[:, 3] - linesP[:, 1]]).T
         v = np.divide(v, np.reshape(np.linalg.norm(v, axis=1), (v.shape[0], -1)))
@@ -108,7 +123,10 @@ class feature_detector:
                     cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
             cv.circle(
                 cdstP,
-                (np.ceil(np.size(map, 0) / 2).astype(int), np.ceil(np.size(map, 0) / 2).astype(int),),
+                (
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                ),
                 4,
                 (0, 255, 0),
                 -1,
@@ -121,8 +139,7 @@ class feature_detector:
         df["phis_line"] = phis
         return df, cdstP
 
-
-    def check_points_in_line(self,x, y, df):
+    def check_points_in_line(self, x, y, df):
         points = np.vstack((x / self.res_map, y / self.res_map)).T
         phis = np.array(df["phis_line"])
         rs = np.array(df["rs_line"])
@@ -138,8 +155,7 @@ class feature_detector:
         df["error_mse"] = error_mse
         return df
 
-
-    def filter_segments(self,df, threshold_error, threshold_line):
+    def filter_segments(self, df, threshold_error, threshold_line):
         threshold_npoints = np.max(df["npoints"]) * 0.5
         df = df[df["error_mse"] <= threshold_error]
         df = df[df["npoints"] >= threshold_npoints]
@@ -152,8 +168,7 @@ class feature_detector:
         pd.concat([df, df_diff], axis=1)
         return df
 
-
-    def find_intersections(self,df, img=None):
+    def find_intersections(self, df, img=None):
         # x = (r*sin(phi1)-r1*sin(phi))/sin(phi1-phi)
         # y = (r1*cos(phi)-r*cos(phi1))/sin(phi1-phi)
         x_inter = []
@@ -163,67 +178,86 @@ class feature_detector:
         for idx in range(df.shape[0] - 1):
             phi = np.array(df.iloc[[idx]]["phis_line"])
             r = np.array(df.iloc[[idx]]["rs_line"])
-            x_inter.extend(
-                (r * np.sin(phi1[idx + 1 :]) - r1[idx + 1 :] * np.sin(phi))
-                / np.sin(phi1[idx + 1 :] - phi)
-            )
-            y_inter.extend(
-                (r1[idx + 1 :] * np.cos(phi) - r * np.cos(phi1[idx + 1 :]))
-                / np.sin(phi1[idx + 1 :] - phi)
-            )
+            with np.errstate(divide="ignore", invalid="ignore"):
+                x_inter.extend(
+                    (r * np.sin(phi1[idx + 1 :]) - r1[idx + 1 :] * np.sin(phi))
+                    / np.sin(phi1[idx + 1 :] - phi)
+                )
+                y_inter.extend(
+                    (r1[idx + 1 :] * np.cos(phi) - r * np.cos(phi1[idx + 1 :]))
+                    / np.sin(phi1[idx + 1 :] - phi)
+                )
+            np.seterr(divide="warn", invalid="warn")
         center = (np.size(img, 0) / 2, np.size(img, 0) / 2)
         dist = np.sqrt(
-            np.power(np.subtract(x_inter, center[0]), 2) + np.power(np.subtract(y_inter, center[1]), 2)
+            np.power(np.subtract(x_inter, center[0]), 2)
+            + np.power(np.subtract(y_inter, center[1]), 2)
         )
         intersections_df = pd.DataFrame(x_inter, columns=["x"])
         intersections_df["y"] = y_inter
         intersections_df["dist"] = dist
         intersections_df = intersections_df.dropna()
         intersections_df.drop_duplicates()
-        intersections_df = intersections_df[intersections_df["dist"] < self.max_intersection_distance]
+        intersections_df = intersections_df[
+            intersections_df["dist"] < self.max_intersection_distance
+        ]
         if img is not None:
             for index, row in intersections_df.iterrows():
                 cv.rectangle(
                     img,
-                    (np.floor(row["x"] - 3).astype("uint16"), np.floor(row["y"] + 3).astype("uint16"),),
-                    (np.floor(row["x"] + 3).astype("uint16"), np.floor(row["y"] - 3).astype("uint16"),),
+                    (
+                        np.floor(row["x"] - 3).astype("uint16"),
+                        np.floor(row["y"] + 3).astype("uint16"),
+                    ),
+                    (
+                        np.floor(row["x"] + 3).astype("uint16"),
+                        np.floor(row["y"] - 3).astype("uint16"),
+                    ),
                     (0, 255, 255),
                     1,
                 )
             cv.circle(
                 img,
-                (np.ceil(np.size(map, 0) / 2).astype(int), np.ceil(np.size(map, 0) / 2).astype(int),),
+                (
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                ),
                 self.max_intersection_distance,
                 (0, 255, 50),
                 1,
             )
             cv.imshow(
-                "Detected Lines (in red) - Probabilistic Line Transform", cv.rotate(img, cv.ROTATE_180),
+                "Detected Lines (in red) - Probabilistic Line Transform",
+                cv.rotate(img, cv.ROTATE_180),
             )
             cv.waitKey(1)
         return intersections_df
 
-
-    def inter2feature(self,df_inter):
+    def inter2feature(self, df_inter):
         df_inter = df_inter * self.res_map
         return df_inter
 
 
 df_laser = load_bag("I:/My Drive/IST/SAut/23-05/2022-05-23-15-50-47.bag")
-fd = feature_detector(laser_max_range = 5.6,res_map = 0.01,acc_th = 20, min_line_lenght = 0.30, max_line_gap = 0.30, min_dist2line_th = 0.20, max_intersection_distance = 5.6)
+fd = feature_detector(
+    laser_max_range=5.6,
+    res_map=0.01,
+    acc_th=20,
+    min_line_lenght=0.30,
+    max_line_gap=0.30,
+    min_dist2line_th=0.20,
+    max_intersection_distance=5.6,
+)
 for idx in range(1000, 3200):
     rho, theta = laser_data_extraction(df_laser, idx)
     start_time = time.time()
-    zS = polar2z(rho, theta)
-    x = np.real(zS)
-    y = np.imag(zS)
+    x,y = polar2z(rho, theta)
 
     map = fd.create_map(x, y)
-    df, img = fd.detect_lines(map, plot=True)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    df, img = fd.detect_lines(map, plot=False)
+    print("=== %s seconds ===" % (time.time() - start_time))
     df = fd.check_points_in_line(x, y, df)
     df_filtered = fd.filter_segments(df, 5, 10)
     df_inter = fd.find_intersections(df, img)
     features = fd.inter2feature(df_inter)
     print("--- %s seconds ---" % (time.time() - start_time))
-
