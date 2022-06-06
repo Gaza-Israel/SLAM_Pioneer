@@ -159,7 +159,7 @@ class feature_detector:
         return df
 
 
-    def filter_segments(self,df, threshold_error, threshold_line,threshold_cluster=0.005,plot = True):
+    def filter_segments(self,df, threshold_error, threshold_line,threshold_cluster=0.002,plot = True):
         threshold_npoints = (np.max(df["npoints"])+1) * 0.5
         # df = df[df["error_mse"] <= threshold_error]
         # df = df[df["npoints"] >= threshold_npoints]
@@ -220,7 +220,7 @@ class feature_detector:
             # idx = KneeLocator(number_clusters, wcss, curve='convex', direction='decreasing').knee
             print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = ',idx)
             
-            plt.plot(number_clusters,wcss)
+            plt.plot(number_clusters[1:],wcss[1:])
             plt.title('The Elbow title')
             plt.xlabel('Number of clusters')
             plt.ylabel('WCSS')
@@ -362,7 +362,7 @@ class feature_detector:
 
 
 df_laser = load_bag("2022-05-23-15-50-47.bag")
-fd = feature_detector(laser_max_range = 5.6,res_map = 0.01,acc_th = 20, min_line_lenght = 0.30, max_line_gap = 0.30, min_dist2line_th = 0.3, max_intersection_distance = 5.6)
+fd = feature_detector(laser_max_range = 5.6,res_map = 0.01,acc_th = 20, min_line_lenght = 0.30, max_line_gap = 0.30, min_dist2line_th = 0.4, max_intersection_distance = 5.6)
 # for idx in range(1550, 3200):
 for idx in range(1550, 2000):
     print('aaaaaaaaaaaaaaaaaaaaa',idx)
