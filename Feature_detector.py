@@ -159,10 +159,11 @@ class feature_detector:
         return df
 
 
-    def filter_segments(self,df, threshold_error, threshold_line,threshold_cluster=0.008,plot = True):
+    def filter_segments(self,df, threshold_error, threshold_line,threshold_cluster=0.005,plot = True):
         threshold_npoints = (np.max(df["npoints"])+1) * 0.5
         # df = df[df["error_mse"] <= threshold_error]
         # df = df[df["npoints"] >= threshold_npoints]
+        df = df[df["npoints"] != 0]
         
         # plt.scatter(df['phis_line'],df['rs_line'])
         # plt.ylim(0,1500)
@@ -176,6 +177,10 @@ class feature_detector:
         x = df[['rs_line','phis_line']]
         x['rs_line'] =  x['rs_line']/rs_diag*self.res_map
         x['phis_line'] = x['phis_line']/phis_diag
+        # x['x_1'] = df['x_1']/rs_diag*self.res_map
+        # x['x_2'] = df['x_2']/rs_diag*self.res_map
+        # x['y_1'] = df['y_1']/rs_diag*self.res_map
+        # x['y_2'] = df['y_2']/rs_diag*self.res_map
         # scaler = StandardScaler(with_mean=True, with_std=True, copy=True)
         # scaler.fit(x)
         # x = scaler.transform(x)
@@ -318,6 +323,8 @@ class feature_detector:
         intersections_df = intersections_df[
             intersections_df["dist"] < self.max_intersection_distance
         ]
+        
+        
         if img is not None:
             for index, row in intersections_df.iterrows():
                 cv.rectangle(
@@ -355,9 +362,9 @@ class feature_detector:
 
 
 df_laser = load_bag("2022-05-23-15-50-47.bag")
-fd = feature_detector(laser_max_range = 5.6,res_map = 0.01,acc_th = 20, min_line_lenght = 0.30, max_line_gap = 0.30, min_dist2line_th = 0.20, max_intersection_distance = 5.6)
-# for idx in range(1000, 3200):
-for idx in range(1082, 1083):
+fd = feature_detector(laser_max_range = 5.6,res_map = 0.01,acc_th = 20, min_line_lenght = 0.30, max_line_gap = 0.30, min_dist2line_th = 0.3, max_intersection_distance = 5.6)
+# for idx in range(1550, 3200):
+for idx in range(1550, 2000):
     print('aaaaaaaaaaaaaaaaaaaaa',idx)
     rho, theta = laser_data_extraction(df_laser, idx)
     start_time = time.time()
@@ -371,9 +378,9 @@ for idx in range(1082, 1083):
     # features = fd.inter2feature(df_inter)
     print("--- %s seconds ---" % (time.time() - start_time))
     
+    # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
+    df_inter_filtered = fd.find_intersections(df, img, window='Filtered')
     df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
-    df_inter_filtered = fd.find_intersections(df_filtered, img, window='Filtered')
-    
     #############
     
     
