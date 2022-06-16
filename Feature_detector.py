@@ -169,7 +169,7 @@ class feature_detector:
         return df
 
     def filter_segments(
-        self, df, threshold_error, threshold_line, threshold_cluster=0.008, plot=True
+        self, df, threshold_error, threshold_line, threshold_cluster=0.009, plot=True
     ):
         threshold_npoints = (np.max(df["npoints"]) + 1) * 0.5
         df = df[df["npoints"] != 0]
