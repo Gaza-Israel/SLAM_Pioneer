@@ -382,7 +382,7 @@ for idx in range(1600, 2000):
     x, y = polar2z(rho, theta)
 
     map, map_points = fd.create_map(x, y)
-    df, img = fd.detect_lines(map, plot=True)
+    df, img = fd.detect_lines(map, plot=False)
     print("--- %s seconds ---" % (time.time() - start_time))
     start_time = time.time()
     df = fd.check_points_in_line(map_points, df, map)
@@ -394,7 +394,7 @@ for idx in range(1600, 2000):
     
     
     
-    df_inter_filtered = fd.find_intersections(df, img, window="Not Filtered")
+    # df_inter_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
     df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
     df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
     #############
