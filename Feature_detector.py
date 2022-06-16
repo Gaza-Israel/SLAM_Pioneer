@@ -164,7 +164,7 @@ class feature_detector:
         return df
 
     def filter_segments(
-        self, df, threshold_error, threshold_line, threshold_cluster=0.002, plot=True
+        self, df, threshold_error, threshold_line, threshold_cluster=0.008, plot=True
     ):
         threshold_npoints = (np.max(df["npoints"]) + 1) * 0.5
         # df = df[df["error_mse"] <= threshold_error]
@@ -211,20 +211,19 @@ class feature_detector:
             idx = np.argmax(wcss_diff < threshold_cluster) + 1
             number_clusters = range(1, n_cluster)
 
-            plt.plot(number_clusters[0:-1], wcss_diff)
-            plt.title("The Elbow title")
-            plt.xlabel("Number of clusters")
-            plt.ylabel("WCSS")
-            plt.show()
+            # plt.plot(number_clusters[0:-1], wcss_diff)
+            # plt.title("The Elbow title")
+            # plt.xlabel("Number of clusters")
+            # plt.ylabel("WCSS")
+            # plt.show()
 
             # idx = KneeLocator(number_clusters, wcss, curve='convex', direction='decreasing').knee
-            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa = ", idx)
-
-            plt.plot(number_clusters[1:], wcss[1:])
-            plt.title("The Elbow title")
-            plt.xlabel("Number of clusters")
-            plt.ylabel("WCSS")
-            plt.show()
+            
+            # plt.plot(number_clusters[1:], wcss[1:])
+            # plt.title("The Elbow title")
+            # plt.xlabel("Number of clusters")
+            # plt.ylabel("WCSS")
+            # plt.show()
 
             kmeans = KMeans(idx)
             kmeans.fit(x)
@@ -234,18 +233,21 @@ class feature_detector:
             identified_clusters = kmeans.fit_predict(x)
             data_with_clusters = df.copy()
             data_with_clusters["Clusters"] = identified_clusters
-            plt.scatter(
-                data_with_clusters["rs_line"],
-                data_with_clusters["phis_line"],
-                c=data_with_clusters["Clusters"],
-                cmap="rainbow",
-            )
-            plt.show()
+            # plt.scatter(
+            #     data_with_clusters["rs_line"],
+            #     data_with_clusters["phis_line"],
+            #     c=data_with_clusters["Clusters"],
+            #     cmap="rainbow",
+            # )
+            
+            # plt.show()
 
-            plt.scatter(
-                x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow"
-            )
-            plt.show()
+            # plt.scatter(
+            #     x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow"
+            # )
+            # plt.xlabel("Normalized distance")
+            # plt.ylabel("Normalized angle")
+            # plt.show()
 
             global df1
             df1 = data_with_clusters.groupby(["Clusters"], as_index=False).agg({"error_mse": "min"})
@@ -378,12 +380,12 @@ fd = feature_detector(
     acc_th=20,
     min_line_lenght=0.30,
     max_line_gap=0.30,
-    min_dist2line_th=0.4,
+    min_dist2line_th=0.2,
     max_intersection_distance=5.6,
 )
 # for idx in range(1550, 3200):
-for idx in range(1550, 2000):
-    print("aaaaaaaaaaaaaaaaaaaaa", idx)
+for idx in range(1600, 2000):
+    print("new-----------------------------------", idx)
     rho, theta = laser_data_extraction(df_laser, idx)
     start_time = time.time()
     x, y = polar2z(rho, theta)
@@ -391,13 +393,16 @@ for idx in range(1550, 2000):
     map, map_points = fd.create_map(x, y)
     df, img = fd.detect_lines(map, plot=True)
     print("--- %s seconds ---" % (time.time() - start_time))
+    start_time = time.time()
     df = fd.check_points_in_line(map_points, df, map)
     # df_inter = fd.find_intersections(df, img)
     # features = fd.inter2feature(df_inter)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    
 
     # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
     df_inter_filtered = fd.find_intersections(df, img, window="Filtered")
     df_filtered, img = fd.filter_segments(df, 5, 10, plot=True)
+    df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
     #############
+    print("--- %s seconds - FILTER---" % (time.time() - start_time))
 
