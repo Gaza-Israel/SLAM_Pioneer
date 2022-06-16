@@ -249,38 +249,37 @@ class feature_detector:
         
         cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)        
 
-        
-        # cv.namedWindow(
-        # "Detected Lines (in red) - Probabilistic Line Transform Filtered", cv.WINDOW_KEEPRATIO,
-        # )
-        linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
-        phis = np.array(df1[["phis_line"]])
-        dist = np.array(df1[["rs_line"]])
-        for i in range(0, len(linesP)):
-            l = linesP[i]
-            cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
-
-            phi = phis[i]
-            r = dist[i]
-            a = np.cos(phi)
-            b = np.sin(phi)
-            x0 = a * r
-            y0 = b * r
-            pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
-            pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
-            cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
-
-        cv.circle(
-            cdstP,
-            (
-                np.ceil(np.size(map, 0) / 2).astype(int),
-                np.ceil(np.size(map, 0) / 2).astype(int),
-            ),
-            4,
-            (0, 255, 0),
-            -1,
-        )
         if plot:
+            # cv.namedWindow(
+            # "Detected Lines (in red) - Probabilistic Line Transform Filtered", cv.WINDOW_KEEPRATIO,
+            # )
+            linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
+            phis = np.array(df1[["phis_line"]])
+            dist = np.array(df1[["rs_line"]])
+            for i in range(0, len(linesP)):
+                l = linesP[i]
+                cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
+    
+                phi = phis[i]
+                r = dist[i]
+                a = np.cos(phi)
+                b = np.sin(phi)
+                x0 = a * r
+                y0 = b * r
+                pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
+                pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
+                cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
+    
+            cv.circle(
+                cdstP,
+                (
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                    np.ceil(np.size(map, 0) / 2).astype(int),
+                ),
+                4,
+                (0, 255, 0),
+                -1,
+            )
             cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
             cv.imshow(
                 "Detected Lines (in red) - Probabilistic Line Transform Filtered",
