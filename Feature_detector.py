@@ -93,6 +93,7 @@ class feature_detector:
         return map, idx
 
     def detect_lines(self, map, plot=False):
+        
         dst = np.array(map * 255).astype("uint8")
         element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
         dst = cv.dilate(dst, element)
@@ -104,12 +105,15 @@ class feature_detector:
         v = np.divide(v, np.reshape(np.linalg.norm(v, axis=1), (v.shape[0], -1)))
         phis = np.deg2rad(90) + np.arcsin(v[:, 1])
         dist = linesP[:, 0] * np.cos(phis) + linesP[:, 1] * np.sin(phis)
+        
+        
+        cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
+        
         if plot:
             cv.namedWindow("Source", cv.WINDOW_KEEPRATIO)
-            cv.namedWindow(
-                "Detected Lines (in red) - Probabilistic Line Transform", cv.WINDOW_KEEPRATIO,
-            )
-            cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
+            # cv.namedWindow(
+            #     "Detected Lines (in red) - Probabilistic Line Transform", cv.WINDOW_KEEPRATIO,
+            # )
             if linesP is not None:
                 for i in range(0, len(linesP)):
                     l = linesP[i]
@@ -137,6 +141,7 @@ class feature_detector:
             cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
             # cv.imshow("Detected Lines (in red) - Probabilistic Line Transform",cv.rotate(cdstP, cv.ROTATE_180))
             cv.waitKey(1)
+            
         df = pd.DataFrame(linesP, columns=["x_1", "y_1", "x_2", "y_2"])
         df["rs_line"] = dist
         df["phis_line"] = phis
@@ -167,14 +172,8 @@ class feature_detector:
         self, df, threshold_error, threshold_line, threshold_cluster=0.008, plot=True
     ):
         threshold_npoints = (np.max(df["npoints"]) + 1) * 0.5
-        # df = df[df["error_mse"] <= threshold_error]
-        # df = df[df["npoints"] >= threshold_npoints]
         df = df[df["npoints"] != 0]
 
-        # plt.scatter(df['phis_line'],df['rs_line'])
-        # plt.ylim(0,1500)
-        # plt.xlim(0,3.14)
-        # plt.show()
         n_cluster = len(df)
 
         rs_diag = ((self.x_max - self.x_min) ** 2 + (self.y_max - self.y_min) ** 2) ** 0.5
@@ -183,13 +182,6 @@ class feature_detector:
         x = df[["rs_line", "phis_line"]]
         x["rs_line"] = x["rs_line"] / rs_diag * self.res_map
         x["phis_line"] = x["phis_line"] / phis_diag
-        # x['x_1'] = df['x_1']/rs_diag*self.res_map
-        # x['x_2'] = df['x_2']/rs_diag*self.res_map
-        # x['y_1'] = df['y_1']/rs_diag*self.res_map
-        # x['y_2'] = df['y_2']/rs_diag*self.res_map
-        # scaler = StandardScaler(with_mean=True, with_std=True, copy=True)
-        # scaler.fit(x)
-        # x = scaler.transform(x)
 
         if len(df) != 0:
 
@@ -202,10 +194,6 @@ class feature_detector:
                 wcss_iter = kmeans.inertia_
                 wcss.append(wcss_iter)
 
-                # if i!=1:
-                #     if abs(wcss[i-1]-wcss[i-2])>threshold_cluster:
-                #         idx = i
-
             wcss_norm = wcss
             wcss_diff = -1 * np.diff(wcss_norm)
             idx = np.argmax(wcss_diff < threshold_cluster) + 1
@@ -217,8 +205,6 @@ class feature_detector:
             # plt.ylabel("WCSS")
             # plt.show()
 
-            # idx = KneeLocator(number_clusters, wcss, curve='convex', direction='decreasing').knee
-            
             # plt.plot(number_clusters[1:], wcss[1:])
             # plt.title("The Elbow title")
             # plt.xlabel("Number of clusters")
@@ -256,48 +242,53 @@ class feature_detector:
         else:
             df1 = df
 
+        dst = np.array(map * 255).astype("uint8")
+        element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
+        dst = cv.dilate(dst, element)
+
+        
+        cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)        
+
+        
+        # cv.namedWindow(
+        # "Detected Lines (in red) - Probabilistic Line Transform Filtered", cv.WINDOW_KEEPRATIO,
+        # )
+        linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
+        phis = np.array(df1[["phis_line"]])
+        dist = np.array(df1[["rs_line"]])
+        for i in range(0, len(linesP)):
+            l = linesP[i]
+            cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
+
+            phi = phis[i]
+            r = dist[i]
+            a = np.cos(phi)
+            b = np.sin(phi)
+            x0 = a * r
+            y0 = b * r
+            pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
+            pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
+            cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
+
+        cv.circle(
+            cdstP,
+            (
+                np.ceil(np.size(map, 0) / 2).astype(int),
+                np.ceil(np.size(map, 0) / 2).astype(int),
+            ),
+            4,
+            (0, 255, 0),
+            -1,
+        )
         if plot:
-            dst = np.array(map * 255).astype("uint8")
-            element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
-            dst = cv.dilate(dst, element)
-            cv.namedWindow("Source", cv.WINDOW_KEEPRATIO)
-            cv.namedWindow(
-                "Detected Lines (in red) - Probabilistic Line Transform", cv.WINDOW_KEEPRATIO,
-            )
-            cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-            linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
-            phis = np.array(df1[["phis_line"]])
-            dist = np.array(df1[["rs_line"]])
-            for i in range(0, len(linesP)):
-                l = linesP[i]
-                cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
-
-                phi = phis[i]
-                r = dist[i]
-                a = np.cos(phi)
-                b = np.sin(phi)
-                x0 = a * r
-                y0 = b * r
-                pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
-                pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
-                cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
-
-            cv.circle(
-                cdstP,
-                (
-                    np.ceil(np.size(map, 0) / 2).astype(int),
-                    np.ceil(np.size(map, 0) / 2).astype(int),
-                ),
-                4,
-                (0, 255, 0),
-                -1,
-            )
-            # cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
+            cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
             cv.imshow(
                 "Detected Lines (in red) - Probabilistic Line Transform Filtered",
                 cv.rotate(cdstP, cv.ROTATE_180),
             )
-            cv.waitKey(1)
+        cv.waitKey(1)
+
+                
 
         return df1, cdstP
 
@@ -400,8 +391,11 @@ for idx in range(1600, 2000):
     
 
     # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
-    df_inter_filtered = fd.find_intersections(df, img, window="Filtered")
-    df_filtered, img = fd.filter_segments(df, 5, 10, plot=True)
+    
+    
+    
+    df_inter_filtered = fd.find_intersections(df, img, window="Not Filtered")
+    df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
     df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
     #############
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
