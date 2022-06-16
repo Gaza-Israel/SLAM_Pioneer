@@ -374,7 +374,7 @@ fd = feature_detector(
     min_dist2line_th=0.2,
     max_intersection_distance=5.6,
 )
-# for idx in range(1550, 3200):
+
 for idx in range(1600, 2000):
     print("new-----------------------------------", idx)
     rho, theta = laser_data_extraction(df_laser, idx)
@@ -386,10 +386,10 @@ for idx in range(1600, 2000):
     print("--- %s seconds ---" % (time.time() - start_time))
     start_time = time.time()
     df = fd.check_points_in_line(map_points, df, map)
+            
+    
     # df_inter = fd.find_intersections(df, img)
     # features = fd.inter2feature(df_inter)
-    
-
     # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
     
     
@@ -397,6 +397,6 @@ for idx in range(1600, 2000):
     # df_inter_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
     df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
     df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
-    #############
+
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
 
