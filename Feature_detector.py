@@ -96,9 +96,6 @@ class feature_detector:
         
         if plot:
             cv.namedWindow("Source", cv.WINDOW_KEEPRATIO)
-            # cv.namedWindow(
-            #     "Detected Lines (in red) - Probabilistic Line Transform", cv.WINDOW_KEEPRATIO,
-            # )
             if linesP is not None:
                 for i in range(0, len(linesP)):
                     l = linesP[i]
@@ -117,7 +114,6 @@ class feature_detector:
                 cdstP, (np.ceil(np.size(map, 0) / 2).astype(int), np.ceil(np.size(map, 0) / 2).astype(int),), 4, (0, 255, 0), -1,
             )
             cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
-            # cv.imshow("Detected Lines (in red) - Probabilistic Line Transform",cv.rotate(cdstP, cv.ROTATE_180))
             cv.waitKey(1)
             
         df = pd.DataFrame(linesP, columns=["x_1", "y_1", "x_2", "y_2"])
@@ -141,10 +137,10 @@ class feature_detector:
         return df
 
     def filter_segments(
-        self, df, threshold_error, threshold_line, threshold_cluster=0.009, plot=True
+        self, df, threshold_error, threshold_line, threshold_cluster=0.02, plot=True
     ):
         threshold_npoints = (np.max(df["npoints"]) + 1) * 0.5
-        df = df[df["npoints"] != 0]
+        df = df[df["npoints"] > 20]
 
         n_cluster = len(df)
 
@@ -152,8 +148,10 @@ class feature_detector:
         phis_diag = 3.14
 
         x = df[["rs_line", "phis_line"]]
-        x["rs_line"] = x["rs_line"] / rs_diag * self.res_map
-        x["phis_line"] = x["phis_line"] / phis_diag
+        x["rs_line"] = x["rs_line"] / rs_diag * self.res_map *2
+        x["phis_line"] = x["phis_line"] / phis_diag 
+        x['x_mean'] = (df['x_1']+df['x_2'])/2 / rs_diag * self.res_map 
+        x['y_mean'] = (df['y_1']+df['y_2'])/2 / rs_diag * self.res_map 
 
         if len(df) != 0:
 
@@ -186,28 +184,18 @@ class feature_detector:
             kmeans = KMeans(idx)
             kmeans.fit(x)
 
-            global data_with_clusters
-
             identified_clusters = kmeans.fit_predict(x)
             data_with_clusters = df.copy()
             data_with_clusters["Clusters"] = identified_clusters
-            # plt.scatter(
-            #     data_with_clusters["rs_line"],
-            #     data_with_clusters["phis_line"],
-            #     c=data_with_clusters["Clusters"],
-            #     cmap="rainbow",
-            # )
             
+            # plt.scatter(data_with_clusters["rs_line"],data_with_clusters["phis_line"],c=data_with_clusters["Clusters"],cmap="rainbow",)
             # plt.show()
 
-            # plt.scatter(
-            #     x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow"
-            # )
+            # plt.scatter(x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow")
             # plt.xlabel("Normalized distance")
             # plt.ylabel("Normalized angle")
             # plt.show()
 
-            global df1
             df1 = data_with_clusters.groupby(["Clusters"], as_index=False).agg({"error_mse": "min"})
             df1 = data_with_clusters.merge(df1, how="inner", on=["Clusters", "error_mse"])
 
@@ -219,12 +207,10 @@ class feature_detector:
         dst = cv.dilate(dst, element)
 
         
-        cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)        
-
+              
+        cdstP =None
         if plot:
-            # cv.namedWindow(
-            # "Detected Lines (in red) - Probabilistic Line Transform Filtered", cv.WINDOW_KEEPRATIO,
-            # )
+            cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)  
             linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
             phis = np.array(df1[["phis_line"]])
             dist = np.array(df1[["rs_line"]])
@@ -252,13 +238,8 @@ class feature_detector:
                 (0, 255, 0),
                 -1,
             )
-            cv.imshow("Source", cv.rotate(dst, cv.ROTATE_180))
-            cv.imshow(
-                "Detected Lines (in red) - Probabilistic Line Transform Filtered", cv.rotate(cdstP, cv.ROTATE_180),
-            )
-        cv.waitKey(1)
 
-                
+        cv.waitKey(1)
 
         return df1, cdstP
 
@@ -355,19 +336,19 @@ for idx in range(1550, 2000):
     print("--- %s seconds ---" % (time.time() - start_time))
     
     # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
-    df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
+    df_filtered, img = fd.filter_segments(df, 5, 10, plot=True)
     df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
 
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
 
-    features = fd.inter2feature(df_inter_filtered)
+    # features = fd.inter2feature(df_inter_filtered)
 
-    idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0),img,df_inter_filtered)
-    n_map_features += new_features
-    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+    # idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0),img,df_inter_filtered)
+    # n_map_features += new_features
+    # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
-    print(idx_feature)
+    # print(idx_feature)
 
     #############
     # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
