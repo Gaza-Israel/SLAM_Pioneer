@@ -336,7 +336,7 @@ for idx in range(1550, 2000):
     print("--- %s seconds ---" % (time.time() - start_time))
     
     # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
-    df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
+    df_filtered, img = fd.filter_segments(df, 5, 10, plot=True)
     df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="Filtered_2")
 
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
