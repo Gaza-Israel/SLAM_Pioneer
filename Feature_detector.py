@@ -277,7 +277,7 @@ class feature_detector:
                 x_inter.extend((r * np.sin(phi1[idx + 1 :]) - r1[idx + 1 :] * np.sin(phi)) / np.sin(phi1[idx + 1 :] - phi))
                 y_inter.extend((r1[idx + 1 :] * np.cos(phi) - r * np.cos(phi1[idx + 1 :])) / np.sin(phi1[idx + 1 :] - phi))
             np.seterr(divide="warn", invalid="warn")
-        center = (np.size(img, 0) / 2, np.size(img, 0) / 2)
+        center = (self.map_x_size / 2, self.map_y_size / 2)
         dist = np.sqrt(np.power(np.subtract(x_inter, center[0]), 2) + np.power(np.subtract(y_inter, center[1]), 2))
         intersections_df = pd.DataFrame(x_inter, columns=["x"])
         intersections_df["y"] = y_inter
@@ -329,7 +329,7 @@ class feature_matcher:
             if img is not None:
                 center = np.round(img.shape[0]/2).astype(int)
                 point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
-                cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 1, cv.LINE_AA)
+                cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
         if img is not None:
             img = cv.rotate(img_r, cv.ROTATE_180)
             cv.imshow("Detected Lines (in red) - Probabilistic Line Transform",cv.rotate(img, cv.ROTATE_180))
@@ -351,16 +351,15 @@ for idx in range(1550, 2000):
     map, map_points = fd.create_map(x, y)
     df, img = fd.detect_lines(map, plot=False)
     print("--- %s seconds ---" % (time.time() - start_time))
-    start_time = time.time()
+    
     df = fd.check_points_in_line(map_points, df, map)
     print("--- %s seconds ---" % (time.time() - start_time))
     
     # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
     df_filtered, img = fd.filter_segments(df, 5, 10, plot=False)
-    df_inter_filtered = fd.find_intersections(df_filtered, img, window="Filtered_2")
+    df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="Filtered_2")
 
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
-
     features = fd.inter2feature(df_inter_filtered)
 
     idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0),img,df_inter_filtered)
