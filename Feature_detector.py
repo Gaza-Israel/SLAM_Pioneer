@@ -1,11 +1,12 @@
-from math import pi
+from math import pi, ceil
 import time
 from bagpy import bagreader
 import cv2 as cv
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
+import time
 
 def load_bag(name):
     b = bagreader(name)
@@ -140,69 +141,89 @@ class feature_detector:
         df["error_mse"] = error_mse
         return df
 
-    def filter_segments(self, df, img = None):
-        start_time = time.time()
-        df = df[df["npoints"] > self.filter_min_points]
-
-        n_cluster = len(df)
-
-        x = df[["rs_line", "phis_line"]]
-        x["rs_line"] = x["rs_line"] / self.rs_diag * self.res_map *2
-        x["phis_line"] = x["phis_line"] / self.phis_diag 
-        x['x_mean'] = (df['x_1']+df['x_2'])/2 / self.rs_diag * self.res_map 
-        x['y_mean'] = (df['y_1']+df['y_2'])/2 / self.rs_diag * self.res_map 
-
-        print("--- %s seconds - FILTER -----  Prep -----" % (time.time() - start_time))
-        if len(df) != 0:
-            wcss = []
-            for i in range(1, n_cluster):
-                kmeans = KMeans(i)
-                kmeans.fit(x)
-                wcss_iter = kmeans.inertia_
-                wcss.append(wcss_iter)
-
-            print("--- %s seconds - FILTER -----  fit -----" % (time.time() - start_time))
-            wcss_norm = wcss
-            wcss_diff = -1 * np.diff(wcss_norm)
-            idx = np.argmax(wcss_diff < self.threshold_cluster) + 1
-            number_clusters = range(1, n_cluster)
-
-            # plt.plot(number_clusters[0:-1], wcss_diff)
-            # plt.title("The Elbow title")
-            # plt.xlabel("Number of clusters")
-            # plt.ylabel("WCSS")
-            # plt.show()
-
-            # plt.plot(number_clusters[1:], wcss[1:])
-            # plt.title("The Elbow title")
-            # plt.xlabel("Number of clusters")
-            # plt.ylabel("WCSS")
-            # plt.show()
-
-            print("--- %s seconds - FILTER -----  find -----" % (time.time() - start_time))
-            kmeans = KMeans(idx)
-            kmeans.fit(x)
-
-            identified_clusters = kmeans.fit_predict(x)
-            data_with_clusters = df.copy()
-            data_with_clusters["Clusters"] = identified_clusters
+    def filter_segments(self, df, img = None,online=True):
+        
+        if online:
+            df1 = df.copy()
+            df1 = df1[df1['npoints']>20]
+            df1['mean_error'] = df1['error_mse']/ df1['npoints']
+            df1 = df1[df1['mean_error']<2]
+            df1 = df1.sort_values(by=["rs_line", "phis_line",'mean_error'])
             
-            # plt.scatter(data_with_clusters["rs_line"],data_with_clusters["phis_line"],c=data_with_clusters["Clusters"],cmap="rainbow",)
-            # plt.show()
-
-            # plt.scatter(x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow")
-            # plt.xlabel("Normalized distance")
-            # plt.ylabel("Normalized angle")
-            # plt.show()
-
-            print("--- %s seconds - FILTER -----  predict -----" % (time.time() - start_time))
-            df1 = data_with_clusters.groupby(["Clusters"], as_index=False).agg({"error_mse": "min"})
-            df1 = data_with_clusters.merge(df1, how="inner", on=["Clusters", "error_mse"])
+            df1["rs_line_norm"] = df1["rs_line"] / self.rs_diag * self.res_map * 10
+            df1["phis_line_norm"] = df1["phis_line"] / self.phis_diag 
+            df1['rs_line_diff'] = df1['rs_line_norm'].diff()
+            df1['phis_line_diff'] = df1['phis_line_norm'].diff()
+            df1['error_measure'] = df1['rs_line_diff']**2 + df1['phis_line_diff']**2
+            df1=df1.fillna(1)
+            df1 = df1[df1['error_measure']>0.09]
 
         else:
-            df1 = df
+            start_time = time.time()
+            df = df[df["npoints"] > self.filter_min_points]
+    
+            n_cluster = len(df)
+            
+            
+            x = df[["rs_line", "phis_line"]]
+            x["rs_line"] = x["rs_line"] / self.rs_diag * self.res_map
+            x["phis_line"] = x["phis_line"] / self.phis_diag 
+            # x['x_mean'] = (df['x_1']+df['x_2'])/2 / self.rs_diag * self.res_map 
+            # x['y_mean'] = (df['y_1']+df['y_2'])/2 / self.rs_diag * self.res_map 
+    
+            print("--- %s seconds - FILTER -----  Prep -----" % (time.time() - start_time))
+            if len(df) != 0:
+                wcss = []   
+                for i in range(1, n_cluster):
+                    kmeans = MiniBatchKMeans(i)
+                    kmeans.fit(x)
+                    wcss_iter = kmeans.inertia_
+                    wcss.append(wcss_iter)
+                    if i>2:
+                        if wcss[i-1]-wcss[i-2]<self.threshold_cluster:
+                            i+=100
+    
+                print("--- %s seconds - FILTER -----  fit -----" % (time.time() - start_time))
+                wcss_norm = wcss
+                wcss_diff = -1 * np.diff(wcss_norm)
+                idx = np.argmax(wcss_diff < self.threshold_cluster) + 1
+                number_clusters = range(1, n_cluster)
+    
+                # plt.plot(number_clusters[0:-1], wcss_diff)
+                # plt.title("The Elbow title")
+                # plt.xlabel("Number of clusters")
+                # plt.ylabel("WCSS")
+                # plt.show()
+    
+                # plt.plot(number_clusters[1:], wcss[1:])
+                # plt.title("The Elbow title")
+                # plt.xlabel("Number of clusters")
+                # plt.ylabel("WCSS")
+                # plt.show()
+    
+                print("--- %s seconds - FILTER -----  find -----" % (time.time() - start_time))
+                kmeans = MiniBatchKMeans(idx)
+                kmeans.fit(x)
+    
+                identified_clusters = kmeans.fit_predict(x)
+                data_with_clusters = df.copy()
+                data_with_clusters["Clusters"] = identified_clusters
+                
+                # plt.scatter(data_with_clusters["rs_line"],data_with_clusters["phis_line"],c=data_with_clusters["Clusters"],cmap="rainbow",)
+                # plt.show()
+    
+                plt.scatter(x["rs_line"], x["phis_line"], c=data_with_clusters["Clusters"], cmap="rainbow")
+                plt.xlabel("Normalized distance")
+                plt.ylabel("Normalized angle")
+                plt.show()
+    
+                print("--- %s seconds - FILTER -----  predict -----" % (time.time() - start_time))
+                df1 = data_with_clusters.groupby(["Clusters"], as_index=False).agg({"error_mse": "min"})
+                df1 = data_with_clusters.merge(df1, how="inner", on=["Clusters", "error_mse"])
+
 
         if img is not None:
+            
             linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
             phis = np.array(df1[["phis_line"]])
             dist = np.array(df1[["rs_line"]])
@@ -321,16 +342,20 @@ for idx in range(1550, 2000):
     x, y = polar2z(rho, theta)
 
     map, map_points = fd.create_map(x, y)
-    df, img = fd.detect_lines(map, plot=False)
+    df, img = fd.detect_lines(map, plot=True)
     print("--- %s seconds - Detect Lines ---" % (time.time() - start_time))
     
     df = fd.check_points_in_line(map_points, df)
     print("--- %s seconds - Check points in line ---" % (time.time() - start_time))
     
     # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
-    df_filtered, img = fd.filter_segments(df, img)
+    dst = np.array(map * 255).astype("uint8")
+    cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
+    df_filtered, img2 = fd.filter_segments(df, cdstP)
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
-    df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="Filtered_2")
+    df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="NOTFiltered_1")
+
+    df_inter_filtered, img = fd.find_intersections(df_filtered, img2, window="Filtered_2")
 
     print("--- %s seconds - Intersections---" % (time.time() - start_time))
     features = fd.inter2feature(df_inter_filtered)
@@ -340,12 +365,14 @@ for idx in range(1550, 2000):
     
     print("--- %s seconds - End loop---" % (time.time() - start_time))
     n_map_features += new_features
-    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+    # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
     print("--------------------------------")
     print("                               ")
     print("--------------------------------")
+    
+    # time.sleep(1)
     # print(idx_feature)
 
     #############
