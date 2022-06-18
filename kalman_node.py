@@ -78,15 +78,12 @@ class EKF_node:
         
 
     def callback_geometry_message(self,data,pointer):
-        # pointer.angular.x = data.angular.x
-        # pointer.angular.y = data.angular.y
-        # pointer.angular.z = data.angular.z
-        # pointer.linear.x = data.linear.x
-        # pointer.linear.y = data.linear.y
-        # pointer.linear.z = data.linear.z
-        buff = None
-        data.serialize(buff)
-        pointer.deserialize(buff)
+        pointer.angular.x = data.angular.x
+        pointer.angular.y = data.angular.y
+        pointer.angular.z = data.angular.z
+        pointer.linear.x = data.linear.x
+        pointer.linear.y = data.linear.y
+        pointer.linear.z = data.linear.z
 
     def callback_landmarks(self,data,pointer):
         features = []
