@@ -1,3 +1,4 @@
+from math import pi
 import time
 from bagpy import bagreader
 import cv2 as cv
@@ -5,7 +6,6 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-
 
 def load_bag(name):
     b = bagreader(name)
@@ -52,16 +52,20 @@ def z2polar(x, y):
 
 
 class feature_detector:
-    def __init__(self, laser_max_range, res_map, acc_th, min_line_lenght, max_line_gap, min_dist2line_th, max_intersection_distance,) -> None:
+    def __init__(self, laser_max_range, res_map, acc_th, min_line_lenght, max_line_gap, min_dist2line_th, filter_min_points,threshold_cluster,max_intersection_distance) -> None:
         self.x_min = -laser_max_range - 0.8
         self.y_min = -laser_max_range - 0.8
         self.x_max = laser_max_range + 0.8
         self.y_max = laser_max_range + 0.8
+        self.rs_diag = ((self.x_max - self.x_min) ** 2 + (self.y_max - self.y_min) ** 2) ** 0.5
+        self.phis_diag = pi
         self.res_map = res_map
         self.acc_th = acc_th
         self.min_line_lenght = np.round(min_line_lenght / self.res_map).astype(int)
         self.max_line_gap = np.round(max_line_gap / self.res_map).astype(int)
         self.min_dist2line_th = np.round(min_dist2line_th / self.res_map).astype(int)
+        self.filter_min_points = filter_min_points
+        self.threshold_cluster = threshold_cluster
         self.max_intersection_distance = np.round(max_intersection_distance / self.res_map).astype(int)
         pass
 
@@ -92,9 +96,9 @@ class feature_detector:
         dist = linesP[:, 0] * np.cos(phis) + linesP[:, 1] * np.sin(phis)
         
         
-        cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-        
+        cdstP = None
         if plot:
+            cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
             cv.namedWindow("Source", cv.WINDOW_KEEPRATIO)
             if linesP is not None:
                 for i in range(0, len(linesP)):
@@ -121,7 +125,7 @@ class feature_detector:
         df["phis_line"] = phis
         return df, cdstP
 
-    def check_points_in_line(self, points, df, map):
+    def check_points_in_line(self, points, df):
         phis = np.array(df["phis_line"])
         rs = np.array(df["rs_line"])
         npoints = np.zeros(phis.shape)
@@ -136,27 +140,20 @@ class feature_detector:
         df["error_mse"] = error_mse
         return df
 
-    def filter_segments(
-        self, df, threshold_error, threshold_line, threshold_cluster=0.02, plot=True
-    ):
-        threshold_npoints = (np.max(df["npoints"]) + 1) * 0.5
-        df = df[df["npoints"] > 20]
+    def filter_segments(self, df, img = None):
+        start_time = time.time()
+        df = df[df["npoints"] > self.filter_min_points]
 
         n_cluster = len(df)
 
-        rs_diag = ((self.x_max - self.x_min) ** 2 + (self.y_max - self.y_min) ** 2) ** 0.5
-        phis_diag = 3.14
-
         x = df[["rs_line", "phis_line"]]
-        x["rs_line"] = x["rs_line"] / rs_diag * self.res_map *2
-        x["phis_line"] = x["phis_line"] / phis_diag 
-        x['x_mean'] = (df['x_1']+df['x_2'])/2 / rs_diag * self.res_map 
-        x['y_mean'] = (df['y_1']+df['y_2'])/2 / rs_diag * self.res_map 
+        x["rs_line"] = x["rs_line"] / self.rs_diag * self.res_map *2
+        x["phis_line"] = x["phis_line"] / self.phis_diag 
+        x['x_mean'] = (df['x_1']+df['x_2'])/2 / self.rs_diag * self.res_map 
+        x['y_mean'] = (df['y_1']+df['y_2'])/2 / self.rs_diag * self.res_map 
 
+        print("--- %s seconds - FILTER -----  Prep -----" % (time.time() - start_time))
         if len(df) != 0:
-
-            difference = 1000
-            idx = 1
             wcss = []
             for i in range(1, n_cluster):
                 kmeans = KMeans(i)
@@ -164,9 +161,10 @@ class feature_detector:
                 wcss_iter = kmeans.inertia_
                 wcss.append(wcss_iter)
 
+            print("--- %s seconds - FILTER -----  fit -----" % (time.time() - start_time))
             wcss_norm = wcss
             wcss_diff = -1 * np.diff(wcss_norm)
-            idx = np.argmax(wcss_diff < threshold_cluster) + 1
+            idx = np.argmax(wcss_diff < self.threshold_cluster) + 1
             number_clusters = range(1, n_cluster)
 
             # plt.plot(number_clusters[0:-1], wcss_diff)
@@ -181,6 +179,7 @@ class feature_detector:
             # plt.ylabel("WCSS")
             # plt.show()
 
+            print("--- %s seconds - FILTER -----  find -----" % (time.time() - start_time))
             kmeans = KMeans(idx)
             kmeans.fit(x)
 
@@ -196,27 +195,20 @@ class feature_detector:
             # plt.ylabel("Normalized angle")
             # plt.show()
 
+            print("--- %s seconds - FILTER -----  predict -----" % (time.time() - start_time))
             df1 = data_with_clusters.groupby(["Clusters"], as_index=False).agg({"error_mse": "min"})
             df1 = data_with_clusters.merge(df1, how="inner", on=["Clusters", "error_mse"])
 
         else:
             df1 = df
 
-        dst = np.array(map * 255).astype("uint8")
-        element = cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2))
-        dst = cv.dilate(dst, element)
-
-        
-              
-        cdstP =None
-        if plot:
-            cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)  
+        if img is not None:
             linesP = np.array(df1[["x_1", "y_1", "x_2", "y_2"]])
             phis = np.array(df1[["phis_line"]])
             dist = np.array(df1[["rs_line"]])
             for i in range(0, len(linesP)):
                 l = linesP[i]
-                cv.line(cdstP, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
+                cv.line(img, (l[0], l[1]), (l[2], l[3]), (0, 0, 255), 4, cv.LINE_AA)
     
                 phi = phis[i]
                 r = dist[i]
@@ -226,10 +218,10 @@ class feature_detector:
                 y0 = b * r
                 pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
                 pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
-                cv.line(cdstP, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
+                cv.line(img, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
     
             cv.circle(
-                cdstP,
+                img,
                 (
                     np.ceil(np.size(map, 0) / 2).astype(int),
                     np.ceil(np.size(map, 0) / 2).astype(int),
@@ -238,10 +230,8 @@ class feature_detector:
                 (0, 255, 0),
                 -1,
             )
-
-        cv.waitKey(1)
-
-        return df1, cdstP
+            cv.waitKey(1)
+        return df1, img
 
     def find_intersections(self, df, img=None, window="Detected Lines (in red) - Probabilistic Line Transform"):
         # x = (r*sin(phi1)-r1*sin(phi))/sin(phi1-phi)
@@ -293,7 +283,9 @@ class feature_matcher:
         pass
     def match_features(self,current_features,map_features,n_map_features,robot_position,img = None,features_px = None):
         current_features_arr = np.reshape(np.array([[current_features['x']],[current_features['y']]]).T,(-1,2))
+        #FIX features reference frame transform (account for robot heading)
         current_features_w = np.subtract(current_features_arr,robot_position)
+        #-------------------------------------------------------------------
         idxs = []
         new_features = 0
         if img is not None:
@@ -319,7 +311,7 @@ class feature_matcher:
         
 
 df_laser = load_bag("2022-05-23-15-50-47.bag")
-fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, max_intersection_distance=8)
+fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
 fm = feature_matcher(0.2)
 map_features = np.zeros((30,2))
 n_map_features = 0
@@ -330,23 +322,30 @@ for idx in range(1550, 2000):
 
     map, map_points = fd.create_map(x, y)
     df, img = fd.detect_lines(map, plot=False)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds - Detect Lines ---" % (time.time() - start_time))
     
-    df = fd.check_points_in_line(map_points, df, map)
-    print("--- %s seconds ---" % (time.time() - start_time))
+    df = fd.check_points_in_line(map_points, df)
+    print("--- %s seconds - Check points in line ---" % (time.time() - start_time))
     
     # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
-    df_filtered, img = fd.filter_segments(df, 5, 10, plot=True)
+    df_filtered, img = fd.filter_segments(df, img)
+    print("--- %s seconds - FILTER---" % (time.time() - start_time))
     df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="Filtered_2")
 
-    print("--- %s seconds - FILTER---" % (time.time() - start_time))
+    print("--- %s seconds - Intersections---" % (time.time() - start_time))
     features = fd.inter2feature(df_inter_filtered)
 
-    # idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0),img,df_inter_filtered)
-    # n_map_features += new_features
-    # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+    idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
+    )
+    
+    print("--- %s seconds - End loop---" % (time.time() - start_time))
+    n_map_features += new_features
+    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
+    print("--------------------------------")
+    print("                               ")
+    print("--------------------------------")
     # print(idx_feature)
 
     #############
