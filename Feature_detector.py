@@ -365,7 +365,7 @@ for idx in range(1550, 2000):
     
     print("--- %s seconds - End loop---" % (time.time() - start_time))
     n_map_features += new_features
-    # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
     print("--------------------------------")
