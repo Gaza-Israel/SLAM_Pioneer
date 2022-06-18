@@ -329,8 +329,32 @@ class feature_matcher:
             cv.waitKey(1)
 
         return idxs,new_features
-        
 
+
+if __name__=="__main__":
+    df_laser = load_bag("2022-05-23-15-50-47.bag")
+    fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
+    fm = feature_matcher(0.2)
+    map_features = np.zeros((30,2))
+    n_map_features = 0
+    for idx in range(1550, 2000):
+        rho, theta = laser_data_extraction(df_laser, idx)
+        start_time = time.time()
+        x, y = polar2z(rho, theta)
+
+        map, map_points = fd.create_map(x, y)
+        df, img = fd.detect_lines(map, plot=False)
+        print("--- %s seconds - Detect Lines ---" % (time.time() - start_time))
+        
+        df = fd.check_points_in_line(map_points, df)
+        print("--- %s seconds - Check points in line ---" % (time.time() - start_time))
+        
+        # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
+        df_filtered, img = fd.filter_segments(df, img)
+        print("--- %s seconds - FILTER---" % (time.time() - start_time))
+        df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="Filtered_2")
+
+<<<<<<< HEAD
 df_laser = load_bag("2022-05-23-15-50-47.bag")
 fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
 fm = feature_matcher(0.2)
@@ -377,7 +401,23 @@ for idx in range(1550, 2000):
 
     #############
     # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
+=======
+        print("--- %s seconds - Intersections---" % (time.time() - start_time))
+        features = fd.inter2feature(df_inter_filtered)
+>>>>>>> 55f63b6680b1bdc8e1098f0fd529e06d77e5f3e7
+
+        idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
+        )
+        
+        print("--- %s seconds - End loop---" % (time.time() - start_time))
+        n_map_features += new_features
+        map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
+        print("--------------------------------")
+        print("                               ")
+        print("--------------------------------")
+        # print(idx_feature)
 
-
+        #############
+        # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
