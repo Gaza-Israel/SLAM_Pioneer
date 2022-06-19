@@ -100,38 +100,38 @@ class modelo():
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
         G[1][2] = np.cos(w * dt + theta) * (v * dt)
         self.sigma = G @ self.sigma @ (G.T) + Res 
-    
-n = 2 # number of landmarks 
-infinito = 10000
+if __name__ == '__main__':
+    n = 2 # number of landmarks 
+    infinito = 10000
 
-x0 = np.zeros(n*2 + 3)
-x0[0] = 0
-x0[1] = 0
-x0[2] = 0
+    x0 = np.zeros(n*2 + 3)
+    x0[0] = 0
+    x0[1] = 0
+    x0[2] = 0
 
-sigma0 = np.identity(n*2 + 3) * 0.001 
-Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
-Q[0][0] = 0.001
-Q[1][1] = 0.001
+    sigma0 = np.identity(n*2 + 3) * 0.001 
+    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
+    Q[0][0] = 0.001
+    Q[1][1] = 0.001
 
-u = [1,0]
-dt = 1
-teste = modelo(x0, dt, sigma0)
-modelo.move(teste, u)
-teste_ekf = EKF()
-obs = np.array([2, 2])
-teste_ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], teste)
-teste_ekf.KalmanGain(teste, Q)
-print(teste_ekf.correct_prediction(teste, obs))
+    u = [1,0]
+    dt = 1
+    teste = modelo(x0, dt, sigma0)
+    modelo.move(teste, u)
+    teste_ekf = EKF()
+    obs = np.array([2, 2])
+    teste_ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], teste)
+    teste_ekf.KalmanGain(teste, Q)
+    print(teste_ekf.correct_prediction(teste, obs))
 
 
-#     class modelo:
-#     measure
-    
-#     kalman.predict()
-#     feture.extract()
-#     feature.match()
-#     kalma.correct()
+    #     class modelo:
+    #     measure
+        
+    #     kalman.predict()
+    #     feture.extract()
+    #     feature.match()
+    #     kalma.correct()
 
 
 
