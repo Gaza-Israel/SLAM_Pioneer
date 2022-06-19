@@ -305,24 +305,33 @@ class feature_matcher:
     def match_features(self,current_features,map_features,n_map_features,robot_position,img = None,features_px = None):
         current_features_arr = np.reshape(np.array([[current_features['x']],[current_features['y']]]).T,(-1,2))
         #FIX features reference frame transform (account for robot heading)
-        current_features_w = np.subtract(current_features_arr,robot_position)
+        current_features_w = np.subtract(current_features_arr,(robot_position[0],robot_position[1]))
         #-------------------------------------------------------------------
         idxs = []
         new_features = 0
         if img is not None:
             img_r = cv.rotate(img, cv.ROTATE_180)
-        for idx,feature in enumerate(current_features_w):
-            dist = np.sqrt(np.power(np.subtract(feature[0],map_features[:,0]),2) + np.power(np.subtract(feature[1],map_features[:,1]),2))
-            min_dist_idx = dist.argmin()
-            if dist[min_dist_idx]<self.dist_th and min_dist_idx<n_map_features:
-                idxs.append(min_dist_idx)
-            else:
+        if not map_features.shape[0]==0:
+            for idx,feature in enumerate(current_features_w):
+                dist = np.sqrt(np.power(np.subtract(feature[0],map_features[:,0]),2) + np.power(np.subtract(feature[1],map_features[:,1]),2))
+                min_dist_idx = dist.argmin()
+                if dist[min_dist_idx]<self.dist_th and min_dist_idx<n_map_features:
+                    idxs.append(min_dist_idx)
+                else:
+                    idxs.append(n_map_features+new_features)
+                    new_features += 1
+                if img is not None:
+                    center = np.round(img.shape[0]/2).astype(int)
+                    point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
+                    cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
+        else:
+            for idx,feature in enumerate(current_features_w):
                 idxs.append(n_map_features+new_features)
                 new_features += 1
-            if img is not None:
-                center = np.round(img.shape[0]/2).astype(int)
-                point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
-                cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
+                if img is not None:
+                    center = np.round(img.shape[0]/2).astype(int)
+                    point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
+                    cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
         if img is not None:
             img = cv.rotate(img_r, cv.ROTATE_180)
             cv.imshow("Detected Lines (in red) - Probabilistic Line Transform",cv.rotate(img, cv.ROTATE_180))
@@ -330,53 +339,53 @@ class feature_matcher:
 
         return idxs,new_features
         
+if __name__=="__main__":
+    df_laser = load_bag("2022-05-23-15-50-47.bag")
+    fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
+    fm = feature_matcher(0.2)
+    map_features = np.zeros((30,2))
+    n_map_features = 0
+    for idx in range(1550, 2000):
+        rho, theta = laser_data_extraction(df_laser, idx)
+        start_time = time.time()
+        x, y = polar2z(rho, theta)
 
-df_laser = load_bag("2022-05-23-15-50-47.bag")
-fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
-fm = feature_matcher(0.2)
-map_features = np.zeros((30,2))
-n_map_features = 0
-for idx in range(1550, 2000):
-    rho, theta = laser_data_extraction(df_laser, idx)
-    start_time = time.time()
-    x, y = polar2z(rho, theta)
+        map, map_points = fd.create_map(x, y)
+        df, img = fd.detect_lines(map, plot=True)
+        print("--- %s seconds - Detect Lines ---" % (time.time() - start_time))
+        
+        df = fd.check_points_in_line(map_points, df)
+        print("--- %s seconds - Check points in line ---" % (time.time() - start_time))
+        
+        # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
+        dst = np.array(map * 255).astype("uint8")
+        cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
+        df_filtered, img2 = fd.filter_segments(df, cdstP)
+        print("--- %s seconds - FILTER---" % (time.time() - start_time))
+        df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="NOTFiltered_1")
 
-    map, map_points = fd.create_map(x, y)
-    df, img = fd.detect_lines(map, plot=True)
-    print("--- %s seconds - Detect Lines ---" % (time.time() - start_time))
-    
-    df = fd.check_points_in_line(map_points, df)
-    print("--- %s seconds - Check points in line ---" % (time.time() - start_time))
-    
-    # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
-    dst = np.array(map * 255).astype("uint8")
-    cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-    df_filtered, img2 = fd.filter_segments(df, cdstP)
-    print("--- %s seconds - FILTER---" % (time.time() - start_time))
-    df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="NOTFiltered_1")
+        df_inter_filtered, img = fd.find_intersections(df_filtered, img2, window="Filtered_2")
 
-    df_inter_filtered, img = fd.find_intersections(df_filtered, img2, window="Filtered_2")
+        print("--- %s seconds - Intersections---" % (time.time() - start_time))
+        features = fd.inter2feature(df_inter_filtered)
 
-    print("--- %s seconds - Intersections---" % (time.time() - start_time))
-    features = fd.inter2feature(df_inter_filtered)
-
-    idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
-    )
-    
-    print("--- %s seconds - End loop---" % (time.time() - start_time))
-    n_map_features += new_features
-    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+        idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
+        )
+        
+        print("--- %s seconds - End loop---" % (time.time() - start_time))
+        n_map_features += new_features
+        map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
-    print("--------------------------------")
-    print("                               ")
-    print("--------------------------------")
-    
-    # time.sleep(1)
-    # print(idx_feature)
+        print("--------------------------------")
+        print("                               ")
+        print("--------------------------------")
+        
+        # time.sleep(1)
+        # print(idx_feature)
 
-    #############
-    # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
+        #############
+        # df_filtered,img = fd.filter_segments(df, 5, 10, plot=True)
 
 
 
