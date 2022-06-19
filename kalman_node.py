@@ -7,8 +7,23 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from visualization_msgs.msg import Marker 
 from pyquaternion import Quaternion
 from range_finder_features_pkg.msg import features_msg
+from EKF_v3 import modelo,EKF
 class EKF_node:
-    def __init__(self):
+    def __init__(self,n_of_landmarks,sigma0,Q,dt):
+        self.n_of_landmarks = n_of_landmarks
+        self.x0 = np.zeros(n_of_landmarks*2 + 3)
+        self.x0[0] = 0
+        self.x0[1] = 0
+        self.x0[2] = 0
+        self.sigma0 = sigma0 
+        self.Q = Q 
+        self.dt = dt 
+
+        self.model = modelo(self.x0, self.dt, self.sigma0)
+        self.ekf = EKF()
+
+
+
         self.pose_publisher = rospy.Publisher("EKF/pose",PoseWithCovarianceStamped,queue_size=1)
         self.landmarks_publisher = rospy.Publisher("EKF/Landmarks",Marker,queue_size=1)
         
@@ -85,34 +100,39 @@ class EKF_node:
         pointer.linear.y = data.linear.y
         pointer.linear.z = data.linear.z
 
-    def callback_landmarks(self,data,pointer):
-        # features = []
-        # features_idx = []
-        # for idx,point in enumerate(data.points):
-        #     features[idx,:] = [point.x,point.y]
-        #     features_idx[idx] = point.z
-        #
-        #       KALMAN FILTER CODE
-        #
+    def callback_landmarks(self,data):
+        features = np.array([])
+        idx_features = np.array([])
+        for point in data.points:
+            features = np.append(features,[point.x,point.y])
+            idx_features = np.append(idx_features,point.z)
+        (x,sigma) = self.ekf.correct_prediction(self.model, obs)
         pointer.points = data.points
 
     def loop(self):
         last_input = geometry_msgs.msg.Twist()
-        last_features = features_msg()
         rospy.init_node('Kalman_Filter_node', anonymous=True)
         rospy.Subscriber("/cmd_vel",   geometry_msgs.msg.Twist, self.callback_geometry_message,last_input)
-        rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks,last_features)
-        r = rospy.Rate(1) # 10hz 
+        rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks)
+        r = rospy.Rate(1/self.dt) # 10hz 
         while not rospy.is_shutdown():
-            #
-            #       KALMAN FILTER CODE
-            #
+
+            self.model.move(u)
+            self.ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], self.model)
+            self.ekf.KalmanGain(self.model, Q)
+
             self.pub_estimated_pose([0,0,0],np.zeros((9)))
             land = np.array([[1,2],[2,1],[1,1],[1.5,1.5]])
             self.pub_map_landmarks(land)
-            
+
             r.sleep()
 
 if __name__ == '__main__':
-    ekf = EKF_node()
+    n = 30
+    sigma0 = np.identity(n*2 + 3) * 0.001 
+    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
+    Q[0][0] = 0.001
+    Q[1][1] = 0.001
+    dt = 0.1
+    ekf = EKF_node(n_of_landmarks = n,sigma0 = sigma0,Q = Q,dt = dt)
     ekf.loop()
