@@ -57,6 +57,7 @@ class EKF_node:
 
         new_cov = self.default_cov
         #print(new_cov)
+        cov = cov[0]
         new_cov[0] = cov[0]
         new_cov[1] = cov[1]
         new_cov[5] = cov[2]
@@ -77,9 +78,10 @@ class EKF_node:
     def pub_estimated_pose(self,state,cov):
         pose = self.state2pose(state,cov)
         self.pose_publisher.publish(pose)
-        del pose
 
-    def pub_map_landmarks(self,landmarks):
+    def pub_map_landmarks(self,x,sigma):
+        landmarks = np.array(x[3:])
+        landmarks = np.reshape(landmarks,(-1,2))
         self.landmarks.points.clear()
         self.landmarks.header.stamp = rospy.get_rostime()
         for idx in range(landmarks.shape[0]):
@@ -106,8 +108,9 @@ class EKF_node:
         for point in data.points:
             features = np.append(features,[point.x,point.y])
             idx_features = np.append(idx_features,point.z)
-        (x,sigma) = self.ekf.correct_prediction(self.model, obs)
-        pointer.points = data.points
+        self.ekf.correct_prediction(self.model,features,idx_features)
+        self.pub_map_landmarks(self.model.x,self.model.sigma)
+
 
     def loop(self):
         last_input = geometry_msgs.msg.Twist()
@@ -117,13 +120,10 @@ class EKF_node:
         r = rospy.Rate(1/self.dt) # 10hz 
         while not rospy.is_shutdown():
 
-            self.model.move(u)
-            self.ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], self.model)
-            self.ekf.KalmanGain(self.model, Q)
+            self.ekf.predict(self.model,(last_input.linear.x,last_input.angular.z))
 
-            self.pub_estimated_pose([0,0,0],np.zeros((9)))
-            land = np.array([[1,2],[2,1],[1,1],[1.5,1.5]])
-            self.pub_map_landmarks(land)
+            self.pub_estimated_pose(self.model.x,self.model.sigma)
+            self.pub_map_landmarks(self.model.x,self.model.sigma)
 
             r.sleep()
 
