@@ -111,6 +111,9 @@ x0[2] = 0
 
 sigma0 = np.identity(n*2 + 3) * 0.001 
 Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
+Q[0][0] = 0.001
+Q[1][1] = 0.001
+
 u = [1,0]
 dt = 1
 teste = modelo(x0, dt, sigma0)
