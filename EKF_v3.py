@@ -8,9 +8,9 @@ class EKF():
         self.K = 0
         self.conta_landmarks = 0
 
-    def predict(self,u,modelo):
+    def predict(self,modelo,u):
         pass
-    def correct_prediction(self,landmarks,idx_landmarks,modelo):
+    def correct_prediction(self,modelo,landmarks,idx_landmarks):
         pass
 
 
