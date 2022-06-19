@@ -8,6 +8,12 @@ class EKF():
         self.K = 0
         self.conta_landmarks = 0
 
+    def predict(self,u,modelo):
+        pass
+    def correct_prediction(self,landmarks,idx_landmarks,modelo):
+        pass
+
+
     def atualiza_landmarks(self, land_indices, land_pos, modelo):
         k = 0
         for i in land_indices:
