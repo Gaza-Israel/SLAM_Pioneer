@@ -86,8 +86,8 @@ class EKF_node:
         pointer.linear.z = data.linear.z
 
     def callback_landmarks(self,data,pointer):
-        features = []
-        features_idx = []
+        # features = []
+        # features_idx = []
         # for idx,point in enumerate(data.points):
         #     features[idx,:] = [point.x,point.y]
         #     features_idx[idx] = point.z
@@ -110,8 +110,7 @@ class EKF_node:
             self.pub_estimated_pose([0,0,0],np.zeros((9)))
             land = np.array([[1,2],[2,1],[1,1],[1.5,1.5]])
             self.pub_map_landmarks(land)
-
-
+            
             r.sleep()
 
 if __name__ == '__main__':
