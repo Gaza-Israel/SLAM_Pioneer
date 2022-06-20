@@ -31,7 +31,7 @@ class EKF():
 
         land_x = land_pos[0] 
         land_y = land_pos[1]
-        
+
         deltax = land_x - x
         deltay = land_y - y
         self.r = np.sqrt((deltax)**2 + (deltay)**2)
@@ -95,9 +95,9 @@ class modelo():
         n = len(self.x)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1
-        Res[1][1] = 1
-        Res[2][2] = 1
+        Res[0][0] = 1e-1
+        Res[1][1] = 1e-1
+        Res[2][2] = 1e-1
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
