@@ -31,6 +31,7 @@ class EKF():
 
         land_x = land_pos[0] 
         land_y = land_pos[1]
+        
         deltax = land_x - x
         deltay = land_y - y
         self.r = np.sqrt((deltax)**2 + (deltay)**2)
