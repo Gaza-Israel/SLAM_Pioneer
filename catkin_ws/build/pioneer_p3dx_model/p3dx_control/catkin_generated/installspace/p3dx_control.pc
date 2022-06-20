@@ -1,0 +1,8 @@
+prefix=/home/gz/catkin_ws/install
+
+Name: p3dx_control
+Description: Description of p3dx_control
+Version: 0.0.1
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

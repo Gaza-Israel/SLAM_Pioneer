@@ -1,0 +1,8 @@
+prefix=/home/gz/catkin_ws/devel
+
+Name: range_finder_features_pkg
+Description: Description of range_finder_features_pkg
+Version: 0.0.0
+Cflags: -I/home/gz/catkin_ws/devel/include
+Libs: -L${prefix}/lib 
+Requires: geometry_msgs roscpp rospy std_msgs message_runtime

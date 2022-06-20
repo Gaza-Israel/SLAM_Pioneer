@@ -1,0 +1,2 @@
+gazebo_ros_pkgs/gazebo_dev:gazebo_ros_pkgs/gazebo_msgs:gazebo_ros_pkgs/gazebo_plugins:gazebo_ros_pkgs/gazebo_ros:gazebo_ros_pkgs/gazebo_ros_control:gazebo_ros_pkgs/gazebo_ros_pkgs:pioneer_p3dx_model/p3dx_control:pioneer_p3dx_model/p3dx_description:pioneer_p3dx_model/p3dx_gazebo:range_finder_features_pkg
+-DCATKIN_DEVEL_PREFIX=/home/gz/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/home/gz/catkin_ws/install -G Unix Makefiles
