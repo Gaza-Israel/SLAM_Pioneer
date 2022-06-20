@@ -104,10 +104,10 @@ class EKF_node:
         pointer.linear.z = data.linear.z
 
     def callback_landmarks(self,data):
-        features = np.array([])
-        idx_features = np.array([])
-        for point in data.points:
-            features = np.append(features,[point.x,point.y],axis = 0)
+        features = np.empty((len(data.points),2))
+        idx_features = np.array([[]])
+        for idx,point in enumerate(data.points):
+            features[idx,:] = [point.x,point.y]
             idx_features = np.append(idx_features,point.z)
         self.ekf.correct_prediction(self.Q,self.model,features,idx_features)
         self.pub_map_landmarks(self.model.x,self.model.sigma)
@@ -128,7 +128,7 @@ class EKF_node:
             r.sleep()
 
 if __name__ == '__main__':
-    n = 30
+    n = 80
 
     # Inicializar as incertezas 
     infinito = 10000
