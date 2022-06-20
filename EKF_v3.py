@@ -11,7 +11,7 @@ class EKF():
         self.phi = 0
 
     def predict(self, modelo, u):
-        pass
+        pass 
 
     def correct_prediction(self, Q, modelo, landmarks, idx_landmarks):
         k = 0
