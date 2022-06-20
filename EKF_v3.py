@@ -10,9 +10,6 @@ class EKF():
         self.r = 0
         self.phi = 0
 
-    def predict(self, modelo, u):
-        pass 
-
     def correct_prediction(self, Q, modelo, landmarks, idx_landmarks):
         k = 0
         for i in landmarks:
@@ -32,8 +29,12 @@ class EKF():
         y = modelo.x[1]
         theta = modelo.x[2]
 
-        land_x = land_pos[0] # orientacao invertida com a do robo 
+        land_x = land_pos[0] 
         land_y = land_pos[1]
+        deltax = land_x - x
+        deltay = land_y - y
+        self.r = np.sqrt((deltax)**2 + (deltay)**2)
+        self.phi = np.arctan2(deltay, deltax) - theta
 
         if (j > self.conta_landmarks):
             lx = land_x

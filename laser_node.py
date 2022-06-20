@@ -45,7 +45,7 @@ class Laser_node:
         rho, theta = self.extract_laser_data_from_message(data)
         x, y = polar2z(rho, theta)
         map, map_points = self.fd.create_map(x, y)
-        df, img = self.fd.detect_lines(map, plot=False)
+        df, img = self.fd.detect_lines(map, plot=True)
         df = self.fd.check_points_in_line(map_points, df)
         df_filtered, img = self.fd.filter_segments(df, img)
         df_inter_filtered, img = self.fd.find_intersections(df_filtered, img)
