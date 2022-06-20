@@ -319,8 +319,8 @@ class feature_matcher:
             R_frame = np.array([[c, -s], [s, c]])
 
             land_pos_global = R_frame @ land_pos # coordenadas da landmark no sistema de ref global 
-            current_features[k][0] = land_pos_global[0]
-            current_features[k][1] = land_pos_global[1]
+            current_features[k][0] = land_pos_global[1]
+            current_features[k][1] = land_pos_global[0]
             k = k + 1
 
         #FIX features reference frame transform (account for robot heading)
