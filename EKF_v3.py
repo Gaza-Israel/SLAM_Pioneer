@@ -7,21 +7,20 @@ class EKF():
         self.z = 0 # Predicted location of the given landmark 
         self.K = 0 # Kalmann Gain
         self.conta_landmarks = 0 
+        self.r = 0
+        self.phi = 0
 
     def predict(self, modelo, u):
-        x = modelo.x
-        v = u[0]
-        w = u[1]
-        dt = modelo.dt
-        dist = v * dt
-        d_angular = w * dt
+        pass
 
     def correct_prediction(self, Q, modelo, landmarks, idx_landmarks):
         k = 0
-        for i in idx_landmarks:
-            self.obs_predict(i, landmarks[k], modelo)
+        for i in landmarks:
+            j = idx_landmarks[k] 
+            self.obs_predict(j, landmarks[k], modelo)
             self.KalmanGain(modelo, Q)
-            modelo.x = modelo.x + self.K @ (obs - self.z)
+            land_range_bearing = np.array([self.r, self.phi])
+            modelo.x = modelo.x + self.K @ (land_range_bearing - self.z)
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
             modelo.sigma = (I - self.K @ self.H) @ modelo.sigma
@@ -42,6 +41,8 @@ class EKF():
             deltay = (land_y)
             r = np.sqrt(deltax**2 + deltay**2)
             phi = np.arctan2(deltay,deltax)
+            self.phi = phi
+            self.r = r
             gamma = phi + theta 
 
             if ((land_x >= 0) and (land_y >= 0)) or ((land_x >= 0) and (land_y <= 0)): # 1 e 2 quadrante 
@@ -65,7 +66,6 @@ class EKF():
         h = 1/q * np.array(([-np.sqrt(q) * delta[0], -np.sqrt(q) * delta[1], 0, np.sqrt(q) * delta[0], np.sqrt(q) * delta[0]], 
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
        
-       
         F = np.zeros((5,n))
         F[0][0] = 1
         F[1][1] = 1
@@ -76,9 +76,8 @@ class EKF():
 
     def KalmanGain(self, modelo, Q):
         sigma = modelo.sigma
-        H = self.H
+        H = (self.H)
         self.K = sigma @ (H.T) @ np.linalg.inv(H @ sigma @ (H.T) + Q)
-
 
 class modelo():
     def __init__(self, x0, dt, sigma0): # x = [x, y, theta], u = [velocity, angular_velocity] 
@@ -108,9 +107,9 @@ class modelo():
         n = len(self.x)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 0.001
-        Res[1][1] = 0.001
-        Res[2][2] = 0.001
+        Res[0][0] = 1
+        Res[1][1] = 1
+        Res[2][2] = 1
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
@@ -134,9 +133,9 @@ if __name__ == '__main__':
     sigma0[1][1] = 0
     sigma0[2][2] = 0
 
-    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
-    Q[0][0] = 0.001
-    Q[1][1] = 0.001
+    Q = np.identity(2) # uncertanty in the measurement, bearing and range 
+    Q[0][0] = 1
+    Q[1][1] = 1
 
     u = [1,0]
     dt = 1
@@ -144,10 +143,8 @@ if __name__ == '__main__':
     teste = modelo(x0, dt, sigma0)
     modelo.move(teste, u)
     teste_ekf = EKF()
-    obs = np.array([2, 2])
-    teste_ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], teste)
-    teste_ekf.KalmanGain(teste)
-    print(teste_ekf.correct_prediction(teste, obs))
+    obs = np.array([[2, 2], [1,1]])
+    teste_ekf.correct_prediction(Q, teste, obs, [1, 2])
 
 
 
