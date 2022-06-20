@@ -32,8 +32,8 @@ class EKF():
         y = modelo.x[1]
         theta = modelo.x[2]
 
-        land_x = land_pos[1] # orientacao invertida com a do robo 
-        land_y = land_pos[0]
+        land_x = land_pos[0] # orientacao invertida com a do robo 
+        land_y = land_pos[1]
 
         if (j > self.conta_landmarks):
             lx = land_x
@@ -53,6 +53,7 @@ class EKF():
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
        
         F = np.zeros((5,n))
+        j = int(j)
         F[0][0] = 1
         F[1][1] = 1
         F[2][2] = 1
