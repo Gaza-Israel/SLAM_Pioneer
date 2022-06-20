@@ -106,7 +106,7 @@ class EKF_node:
         for point in data.points:
             features = np.append(features,[point.x,point.y])
             idx_features = np.append(idx_features,point.z)
-        (x,sigma) = self.ekf.correct_prediction(self.model, obs)
+        (x,sigma) = self.ekf.correct_prediction(self.model, obs) ######
         pointer.points = data.points
 
     def loop(self):
@@ -117,7 +117,7 @@ class EKF_node:
         r = rospy.Rate(1/self.dt) # 10hz 
         while not rospy.is_shutdown():
 
-            self.model.move(u)
+            self.model.move(u) ######
             self.ekf.atualiza_landmarks([1,2], [[1,1],[2,2]], self.model)
             self.ekf.KalmanGain(self.model, Q)
 
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     sigma0[1][1] = 0
     sigma0[2][2] = 0
 
-    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range CALIBRAR 
+    Q = np.identity(2) ########## uncertanty in the measurement, bearing and range 
     Q[0][0] = 0.001
     Q[1][1] = 0.001
     dt = 0.1

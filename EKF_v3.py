@@ -26,7 +26,7 @@ class EKF():
             modelo.sigma = (I - self.K @ self.H) @ modelo.sigma
             k = k + 1
 
-    def obs_predict(self, j, land_pos, modelo): # Range-bearing observation [x,y] * n landmarks que observa nesse momento 
+    def obs_predict(self, j, land_pos, modelo): # Recebe a posicao das features ja no frame global 
         n = len(modelo.x)
         x = modelo.x[0]
         y = modelo.x[1]
@@ -36,26 +36,12 @@ class EKF():
         land_y = land_pos[0]
 
         if (j > self.conta_landmarks):
-
-            deltax = (land_x)
-            deltay = (land_y)
-            r = np.sqrt(deltax**2 + deltay**2)
-            phi = np.arctan2(deltay,deltax)
-            self.phi = phi
-            self.r = r
-            gamma = phi + theta 
-
-            if ((land_x >= 0) and (land_y >= 0)) or ((land_x >= 0) and (land_y <= 0)): # 1 e 2 quadrante 
-                lx = x + r * np.cos(gamma)
-                ly = y + r * np.sin(gamma)
-            else: # 3  e 4 quadrante 
-                lx = x - r * np.cos(gamma)
-                ly = y - r * np.sin(gamma)
-
+            lx = land_x
+            ly = land_y
             pos_land = np.array([lx, ly])
             self.conta_landmarks = self.conta_landmarks + 1
         else:
-            pos_land = np.array([land_pos[0], land_pos[1]])
+            pos_land = np.array([land_x, land_y])
 
         pos_mod = np.array([x,y])
         delta = np.array(pos_land - pos_mod)

@@ -304,6 +304,28 @@ class feature_matcher:
         pass
     def match_features(self,current_features,map_features,n_map_features,robot_position,img = None,features_px = None):
         current_features_arr = np.reshape(np.array([[current_features['x']],[current_features['y']]]).T,(-1,2))
+       
+        x = robot_position[0]
+        y = robot_position[1]
+        theta = robot_position[2]
+        land_x = current_features[1]    # orientacao invertida com a do robo 
+        land_y = current_features[0]
+        deltax = (land_x)
+        deltay = (land_y)
+        r = np.sqrt(deltax**2 + deltay**2)
+        phi = np.arctan2(deltay,deltax)
+        gamma = phi + theta 
+
+        if ((land_x >= 0) and (land_y >= 0)) or ((land_x >= 0) and (land_y <= 0)): # 1 e 2 quadrante 
+            lx = x + r * np.cos(gamma)
+            ly = y + r * np.sin(gamma)
+        else: # 3  e 4 quadrante 
+            lx = x - r * np.cos(gamma)
+            ly = y - r * np.sin(gamma)
+        
+        current_features[1] = lx # Posicao das features no frame global 
+        current_features[0] = ly 
+
         #FIX features reference frame transform (account for robot heading)
         current_features_w = np.subtract(current_features_arr,(robot_position[0],robot_position[1]))
         #-------------------------------------------------------------------
