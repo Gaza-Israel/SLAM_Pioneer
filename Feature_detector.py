@@ -308,6 +308,7 @@ class feature_matcher:
         x = robot_position[0]
         y = robot_position[1]
         k = 0
+        current_features = np.array(current_features[['x','y']])
         for i in current_features:
             x_land = current_features_arr[k][0] 
             y_land = current_features_arr[k][1] 
