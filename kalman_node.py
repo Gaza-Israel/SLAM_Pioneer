@@ -129,10 +129,18 @@ class EKF_node:
 
 if __name__ == '__main__':
     n = 30
-    sigma0 = np.identity(n*2 + 3) * 0.001 
-    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range 
+
+    # Inicializar as incertezas 
+    infinito = 10000
+    sigma0 = np.identity(n*2 + 3) * infinito
+    sigma0[0][0] = 0
+    sigma0[1][1] = 0
+    sigma0[2][2] = 0
+
+    Q = np.identity(n*2 + 3) # uncertanty in the measurement, bearing and range CALIBRAR 
     Q[0][0] = 0.001
     Q[1][1] = 0.001
     dt = 0.1
     ekf = EKF_node(n_of_landmarks = n,sigma0 = sigma0,Q = Q,dt = dt)
     ekf.loop()
+    
