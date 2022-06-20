@@ -4,8 +4,8 @@ import geometry_msgs.msg
 import std_msgs
 import numpy as np
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import Marker 
-from pyquaternion import Quaternion
 from range_finder_features_pkg.msg import features_msg
 from EKF_v3 import modelo,EKF
 class EKF_node:
@@ -28,7 +28,7 @@ class EKF_node:
         self.landmarks_publisher = rospy.Publisher("EKF/Landmarks",Marker,queue_size=1)
         
         self.landmarks = Marker()
-        self.landmarks.header.frame_id = "base_link"
+        self.landmarks.header.frame_id = "odom"
         self.landmarks.ns = "Landmarks points"
         self.landmarks.action = Marker.ADD
         self.landmarks.pose.orientation.w = 1
@@ -48,7 +48,7 @@ class EKF_node:
         output.pose.pose.position.y = state[1]
         output.pose.pose.position.z = 0
 
-        quaternion = Quaternion(axis=[0, 0, 1], angle=state[2]).elements
+        quaternion = quaternion_from_euler(0, 0, state[2])
 
         output.pose.pose.orientation.x = quaternion[0]
         output.pose.pose.orientation.y = quaternion[1]
@@ -71,11 +71,12 @@ class EKF_node:
 
         h = std_msgs.msg.Header()
         h.stamp = rospy.Time.now()
-        h.frame_id = 'base_link'
+        h.frame_id = 'odom'
         output.header = h
         return output
 
     def pub_estimated_pose(self,state,cov):
+        print(state[0:3])
         pose = self.state2pose(state,cov)
         self.pose_publisher.publish(pose)
 
@@ -106,9 +107,9 @@ class EKF_node:
         features = np.array([])
         idx_features = np.array([])
         for point in data.points:
-            features = np.append(features,[point.x,point.y])
+            features = np.append(features,[point.x,point.y],axis = 0)
             idx_features = np.append(idx_features,point.z)
-        self.ekf.correct_prediction(self.model,features,idx_features)
+        self.ekf.correct_prediction(self.Q,self.model,features,idx_features)
         self.pub_map_landmarks(self.model.x,self.model.sigma)
 
 
@@ -119,8 +120,7 @@ class EKF_node:
         rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks)
         r = rospy.Rate(1/self.dt) # 10hz 
         while not rospy.is_shutdown():
-
-            self.ekf.predict(self.model,(last_input.linear.x,last_input.angular.z))
+            self.model.move((last_input.linear.x,last_input.angular.z))
 
             self.pub_estimated_pose(self.model.x,self.model.sigma)
             self.pub_map_landmarks(self.model.x,self.model.sigma)
