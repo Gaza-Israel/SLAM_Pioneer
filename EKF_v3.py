@@ -37,13 +37,20 @@ class EKF():
         land_y = land_pos[0]
 
         if (j > self.conta_landmarks):
-            deltax = (x-land_x[0])
-            deltay = (y-land_y[1])
+
+            deltax = (land_x)
+            deltay = (land_y)
             r = np.sqrt(deltax**2 + deltay**2)
             phi = np.arctan2(deltay,deltax)
+            gamma = phi + theta 
 
-            lx = x + r * np.cos(phi + theta)
-            ly = y + r * np.sin(phi + theta)
+            if ((land_x >= 0) and (land_y >= 0)) or ((land_x >= 0) and (land_y <= 0)): # 1 e 2 quadrante 
+                lx = x + r * np.cos(gamma)
+                ly = y + r * np.sin(gamma)
+            else: # 3  e 4 quadrante 
+                lx = x - r * np.cos(gamma)
+                ly = y - r * np.sin(gamma)
+
             pos_land = np.array([lx, ly])
             self.conta_landmarks = self.conta_landmarks + 1
         else:
