@@ -31,10 +31,9 @@ class EKF():
 
         land_x = land_pos[0] 
         land_y = land_pos[1]
-        deltax = land_x - x
-        deltay = land_y - y
-        self.r = np.sqrt((deltax)**2 + (deltay)**2)
-        self.phi = np.arctan2(deltay, deltax) - theta
+
+        land_x_antigo = modelo.x[3 + 2*(j-1)]
+        land_y_antigo = modelo.x[4 + 2*(j-1)]
 
         if (j > self.conta_landmarks):
             lx = land_x
@@ -43,6 +42,11 @@ class EKF():
             self.conta_landmarks = self.conta_landmarks + 1
         else:
             pos_land = np.array([land_x, land_y])
+
+        deltax = land_x_antigo - x
+        deltay = land_y_antigo - y
+        self.r = np.sqrt((deltax)**2 + (deltay)**2)
+        self.phi = np.arctan2(deltay, deltax) - theta
 
         pos_mod = np.array([x,y])
         delta = np.array(pos_land - pos_mod)
@@ -95,9 +99,9 @@ class modelo():
         n = len(self.x)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1
-        Res[1][1] = 1
-        Res[2][2] = 1
+        Res[0][0] = 1e-1
+        Res[1][1] = 1e-1
+        Res[2][2] = 1e-1
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
