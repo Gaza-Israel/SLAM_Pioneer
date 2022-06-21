@@ -1,5 +1,7 @@
 from ctypes import sizeof
 import numpy as np
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 
 class EKF():
     def __init__(self):
@@ -28,6 +30,8 @@ class EKF():
         x = modelo.x[0]
         y = modelo.x[1]
         theta = modelo.x[2]
+        
+        j = int(j)
 
         land_x = land_pos[0] 
         land_y = land_pos[1]
@@ -58,7 +62,6 @@ class EKF():
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
        
         F = np.zeros((5,n))
-        j = int(j)
         F[0][0] = 1
         F[1][1] = 1
         F[2][2] = 1
@@ -76,7 +79,7 @@ class modelo():
         self.x = x0 # State vector for the model, [x_coord, y_coord, theta, land_1_x, land_1_y, land_2_x, land_2_y ...]
         self.dt = dt # Time step 
         self.sigma = sigma0 # Covariances matrix 
-        
+
     def move(self, u): # updates de pose and covariance of the robot for a given control input 
         n = len(self.x)
         F = np.zeros((3,n))
@@ -90,6 +93,7 @@ class modelo():
         self.x = np.add(self.x, dx)
         self.update_cov(u) 
     
+
     def update_cov(self, u): # updates de covariance matrix for a given input
         # This changes the uncertainty in the robot pose but not in the landmar position
         v = u[0]
@@ -99,9 +103,9 @@ class modelo():
         n = len(self.x)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1e-1
-        Res[1][1] = 1e-1
-        Res[2][2] = 1e-1
+        Res[0][0] = 0
+        Res[1][1] = 0
+        Res[2][2] = 0
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
@@ -132,11 +136,14 @@ if __name__ == '__main__':
     u = [1,0]
     dt = 1
 
+    np.set_printoptions(suppress=True, formatter={'float_kind':'{:16.3f}'.format}, linewidth=10)
     teste = modelo(x0, dt, sigma0)
-    modelo.move(teste, u)
     teste_ekf = EKF()
     obs = np.array([[2, 2], [1,1]])
     teste_ekf.correct_prediction(Q, teste, obs, [1, 2])
+    print(teste.x)
+
+
 
 
 
