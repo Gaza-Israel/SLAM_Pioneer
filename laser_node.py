@@ -3,6 +3,7 @@ import rospy
 import geometry_msgs.msg
 import copy
 import numpy as np
+import cv2 as cv
 from io import BytesIO
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import Marker
@@ -13,8 +14,8 @@ from Feature_detector import feature_detector, feature_matcher,polar2z
 class Laser_node:
     def __init__(self):
         self.laser_features_publisher = rospy.Publisher("laser_features",features_msg,queue_size=1)
-        self.fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=8)
-        self.fm = feature_matcher(0.2)
+        self.fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_lenght=0.30, max_line_gap=0.30, min_dist2line_th=0.2, filter_min_points = 20,threshold_cluster=0.02,max_intersection_distance=10)
+        self.fm = feature_matcher(0.8)
 
     def extract_laser_data_from_message(self,data:LaserScan):
         angle_array = np.arange(data.angle_min, data.angle_max + data.angle_increment, data.angle_increment)
@@ -45,15 +46,29 @@ class Laser_node:
         rho, theta = self.extract_laser_data_from_message(data)
         x, y = polar2z(rho, theta)
         map, map_points = self.fd.create_map(x, y)
-        df, img = self.fd.detect_lines(map, plot=True)
-        df = self.fd.check_points_in_line(map_points, df)
-        df_filtered, img = self.fd.filter_segments(df, img)
-        df_inter_filtered, img = self.fd.find_intersections(df_filtered, img)
-        features = self.fd.inter2feature(df_inter_filtered)
-        idx_feature,new_features = self.fm.match_features(
-            features,map_landmarks,
-            features.shape[0],
-            (pose.pose.pose.position.x,pose.pose.pose.position.y,yaw))
+        df, img = self.fd.detect_lines(map, plot=False)
+        plot = False
+        if plot:
+            img = np.array(map * 255).astype("uint8")
+            img = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+            df = self.fd.check_points_in_line(map_points, df)
+            df_filtered, img = self.fd.filter_segments(df, img)
+            df_inter_filtered, img = self.fd.find_intersections(df_filtered, img)
+            features = self.fd.inter2feature(df_inter_filtered)
+            idx_feature,new_features = self.fm.match_features(
+                features,map_landmarks,
+                features.shape[0],
+                (pose.pose.pose.position.x,pose.pose.pose.position.y,yaw),img,df_inter_filtered)
+        else:
+            df = self.fd.check_points_in_line(map_points, df)
+            df_filtered, img = self.fd.filter_segments(df, img)
+            df_inter_filtered, img = self.fd.find_intersections(df_filtered, img)
+            features = self.fd.inter2feature(df_inter_filtered)
+            idx_feature,new_features = self.fm.match_features(
+                features,map_landmarks,
+                features.shape[0],
+                (pose.pose.pose.position.x,pose.pose.pose.position.y,yaw))
+                    
         self.pub_laser_features(features,idx_feature)
 
 

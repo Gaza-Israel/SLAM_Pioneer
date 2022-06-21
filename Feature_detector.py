@@ -240,12 +240,13 @@ class feature_detector:
                 pt1 = (int(x0 + 10000 * (-b)), int(y0 + 10000 * (a)))
                 pt2 = (int(x0 - 10000 * (-b)), int(y0 - 10000 * (a)))
                 cv.line(img, pt1, pt2, (255, 0, 255), 1, cv.LINE_AA)
-    
+            
             cv.circle(
                 img,
                 (
-                    np.ceil(np.size(map, 0) / 2).astype(int),
-                    np.ceil(np.size(map, 0) / 2).astype(int),
+                    
+                    np.ceil(self.map_x_size / 2).astype(int),
+                    np.ceil(self.map_y_size / 2).astype(int),
                 ),
                 4,
                 (0, 255, 0),
@@ -283,7 +284,7 @@ class feature_detector:
                     img, (np.floor(row["x"] - 3).astype("uint16"), np.floor(row["y"] + 3).astype("uint16"),), (np.floor(row["x"] + 3).astype("uint16"), np.floor(row["y"] - 3).astype("uint16"),), (0, 255, 255), 1,
                 )
             cv.circle(
-                img, (np.ceil(np.size(map, 0) / 2).astype(int), np.ceil(np.size(map, 0) / 2).astype(int),), self.max_intersection_distance, (0, 255, 50), 1,
+                img, (np.ceil(self.map_x_size / 2).astype(int),np.ceil(self.map_y_size / 2).astype(int)), self.max_intersection_distance, (0, 255, 50), 1,
             )
             cv.imshow(
                 window, cv.rotate(img, cv.ROTATE_180),
@@ -324,15 +325,13 @@ class feature_matcher:
             current_features[k][1] = land_pos_global[0]
             k = k + 1
 
-        #FIX features reference frame transform (account for robot heading)
-        current_features_w = np.subtract(current_features_arr,(robot_position[0],robot_position[1]))
-        #-------------------------------------------------------------------
+        
         idxs = []
         new_features = 0
         if img is not None:
             img_r = cv.rotate(img, cv.ROTATE_180)
         if not map_features.shape[0]==0:
-            for idx,feature in enumerate(current_features_w):
+            for idx,feature in enumerate(current_features):
                 dist = np.sqrt(np.power(np.subtract(feature[0],map_features[:,0]),2) + np.power(np.subtract(feature[1],map_features[:,1]),2))
                 min_dist_idx = dist.argmin()
                 if dist[min_dist_idx]<self.dist_th and min_dist_idx<n_map_features:
@@ -345,12 +344,12 @@ class feature_matcher:
                     point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
                     cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
         else:
-            for idx,feature in enumerate(current_features_w):
+            for idx,feature in enumerate(current_features):
                 idxs.append(n_map_features+new_features)
                 new_features += 1
                 if img is not None:
                     center = np.round(img.shape[0]/2).astype(int)
-                    point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
+                    point = (np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0)
                     cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
         if img is not None:
             img = cv.rotate(img_r, cv.ROTATE_180)

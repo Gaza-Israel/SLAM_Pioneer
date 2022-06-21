@@ -118,7 +118,7 @@ class EKF_node:
         rospy.init_node('Kalman_Filter_node', anonymous=True)
         rospy.Subscriber("/cmd_vel",   geometry_msgs.msg.Twist, self.callback_geometry_message,last_input)
         rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks)
-        r = rospy.Rate(1/self.dt) # 10hz 
+        r = rospy.Rate(1/(self.dt)*4) # 10hz 
         while not rospy.is_shutdown():
             self.model.move((last_input.linear.x,last_input.angular.z))
 
@@ -138,8 +138,8 @@ if __name__ == '__main__':
     sigma0[2][2] = 0
 
     Q = np.identity(2) ########## uncertanty in the measurement, bearing and range 
-    Q[0][0] = 0.001
-    Q[1][1] = 0.001
+    Q[0][0] = 1
+    Q[1][1] = 1
     dt = 0.1
     ekf = EKF_node(n_of_landmarks = n,sigma0 = sigma0,Q = Q,dt = dt)
     ekf.loop()
