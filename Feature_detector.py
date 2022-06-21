@@ -336,7 +336,7 @@ fd = feature_detector(laser_max_range=5.6, res_map=0.01, acc_th=20, min_line_len
 fm = feature_matcher(0.2)
 map_features = np.zeros((30,2))
 n_map_features = 0
-for idx in range(1550, 2000):
+for idx in range(1550, 1580):
     rho, theta = laser_data_extraction(df_laser, idx)
     start_time = time.time()
     x, y = polar2z(rho, theta)
@@ -353,7 +353,7 @@ for idx in range(1550, 2000):
     cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
     df_filtered, img2 = fd.filter_segments(df, cdstP)
     print("--- %s seconds - FILTER---" % (time.time() - start_time))
-    df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="NOTFiltered_1")
+    df_inter_filtered, img = fd.find_intersections(df, img, window="NOTFiltered_1")
 
     df_inter_filtered, img = fd.find_intersections(df_filtered, img2, window="Filtered_2")
 
@@ -365,7 +365,7 @@ for idx in range(1550, 2000):
     
     print("--- %s seconds - End loop---" % (time.time() - start_time))
     n_map_features += new_features
-    map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+    # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
     print("--------------------------------")
