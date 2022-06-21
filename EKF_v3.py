@@ -17,6 +17,7 @@ class EKF():
             self.obs_predict(j, landmarks[k], modelo)
             self.KalmanGain(modelo, Q)
             land_range_bearing = np.array([self.r, self.phi])
+            print("Diferenca land " + str(j) + " diferenca " + str((land_range_bearing - self.z)[0]) + " , " +  str((land_range_bearing - self.z)[1]))
             modelo.x = modelo.x + self.K @ (land_range_bearing - self.z)
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
@@ -31,34 +32,41 @@ class EKF():
 
         land_x = land_pos[0] 
         land_y = land_pos[1]
+        j = int(j)
 
-        land_x_antigo = modelo.x[3 + 2*(j-1)]
-        land_y_antigo = modelo.x[4 + 2*(j-1)]
+        land_x_antigo = modelo.x[3 + 2*(j)]
+        land_y_antigo = modelo.x[4 + 2*(j)]
 
-        if (j > self.conta_landmarks):
+        if (j >= self.conta_landmarks):
             lx = land_x
             ly = land_y
             pos_land = np.array([lx, ly])
             self.conta_landmarks = self.conta_landmarks + 1
+            deltax = land_x - x
+            deltay = land_y - y
+            self.r = np.sqrt((deltax)**2 + (deltay)**2)
+            self.phi = np.arctan2(deltay, deltax) - theta
+            modelo.x[3 + 2*(j)] = land_x
+            modelo.x[4 + 2*(j)] = land_y
+            
         else:
             pos_land = np.array([land_x, land_y])
-
-        deltax = land_x_antigo - x
-        deltay = land_y_antigo - y
-        self.r = np.sqrt((deltax)**2 + (deltay)**2)
-        self.phi = np.arctan2(deltay, deltax) - theta
+            deltax = land_x_antigo - x
+            deltay = land_y_antigo - y
+            self.r = np.sqrt((deltax)**2 + (deltay)**2)
+            self.phi = np.arctan2(deltay, deltax) - theta
 
         pos_mod = np.array([x,y])
         delta = np.array(pos_land - pos_mod)
         q = delta.T @ delta
 
-        self.z = np.array([np.sqrt(q), np.arctan2(delta[0], delta[1]) - theta]) 
+        self.z = np.array([np.sqrt(q), np.arctan2(delta[1], delta[0]) - theta]) 
+        # self.z = np.array([self.r,self.phi])
 
         h = 1/q * np.array(([-np.sqrt(q) * delta[0], -np.sqrt(q) * delta[1], 0, np.sqrt(q) * delta[0], np.sqrt(q) * delta[0]], 
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
        
         F = np.zeros((5,n))
-        j = int(j)
         F[0][0] = 1
         F[1][1] = 1
         F[2][2] = 1
@@ -99,9 +107,9 @@ class modelo():
         n = len(self.x)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1e-1
-        Res[1][1] = 1e-1
-        Res[2][2] = 1e-1
+        Res[1][1] = 1.5e-2
+        Res[0][0] = 1.5e-2
+        Res[2][2] = 1.5e-2
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)

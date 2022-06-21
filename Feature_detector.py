@@ -7,6 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans, MiniBatchKMeans
 import time
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+from icp import icp
 
 def load_bag(name):
     b = bagreader(name)
@@ -156,7 +160,7 @@ class feature_detector:
             df1['phis_line_diff'] = df1['phis_line_norm'].diff()
             df1['error_measure'] = df1['rs_line_diff']**2 + df1['phis_line_diff']**2
             df1=df1.fillna(1)
-            df1 = df1[df1['error_measure']>0.09]
+            df1 = df1[df1['error_measure']>0.088]
 
         else:
             start_time = time.time()
@@ -311,43 +315,76 @@ class feature_matcher:
         k = 0
         current_features = np.array(current_features[['x','y']])
         for i in current_features:
-            x_land = current_features_arr[k][0] 
-            y_land = current_features_arr[k][1] 
-            land_pos = np.array([x_land, y_land])
 
-            theta = robot_position[2]   
+            # th = - np.deg2rad(90) 
+            # c = np.cos(th) # checar se graus ou rad 
+            # s = np.sin(th)
+            # rot = np.array([[c, -s],
+            #             [s, c]])
+            # feat_laser_frame = np.array([current_features[k][0], current_features[k][0]])
+            # feat_robot_frame = rot@feat_laser_frame
+
+            x_land = 1*current_features_arr[k][0] 
+            y_land = -1*current_features_arr[k][1] 
+            land_pos = np.array([x_land, y_land])
+            
+            theta = +robot_position[2] + np.deg2rad(90)
             c = np.cos(theta) # checar se graus ou rad 
             s = np.sin(theta)
             R_frame = np.array([[c, -s], [s, c]])
 
             land_pos_global = R_frame @ land_pos # coordenadas da landmark no sistema de ref global 
-            current_features[k][0] = land_pos_global[1] + x
-            current_features[k][1] = land_pos_global[0] + y 
+            current_features[k][0] = 1*(land_pos_global[0] + x)
+            current_features[k][1] = 1*(land_pos_global[1] + y)
+        
+
             k = k + 1
 
-        
+
+
+
         idxs = []
         new_features = 0
         if img is not None:
             img_r = cv.rotate(img, cv.ROTATE_180)
+        print(map_features.shape[0])
         if not map_features.shape[0]==0:
-            for idx,feature in enumerate(current_features):
+            reference_points = map_features
+            points_to_be_aligned = current_features
+            # run icp
+            # transformation_history, aligned_points = icp(reference_points, points_to_be_aligned, distance_threshold=0.5,point_pairs_threshold = 3,verbose=True)
+            aligned_points = current_features
+            # show results
+            plt.plot(reference_points[:, 0], reference_points[:, 1], 'rx', label='reference points')
+            plt.plot(points_to_be_aligned[:, 0], points_to_be_aligned[:, 1], 'b1', label='points to be aligned')
+            plt.plot(aligned_points[:, 0], aligned_points[:, 1], 'g+', label='aligned points')
+            plt.legend()
+            closest_idx = []
+            for point in map_features:
+                dist = np.sqrt(np.power(np.subtract(point[0],aligned_points[:,0]),2) + np.power(np.subtract(point[1],aligned_points[:,1]),2))
+                closest = dist.argmin()
+                closest_idx.append(closest)
+            for idx,feature in enumerate(aligned_points):
                 dist = np.sqrt(np.power(np.subtract(feature[0],map_features[:,0]),2) + np.power(np.subtract(feature[1],map_features[:,1]),2))
                 min_dist_idx = dist.argmin()
+                counter = 0
+                while not closest_idx[min_dist_idx]==idx and not counter==dist.shape[0]-1:
+                    counter+=1
+                    min_dist_idx = np.argsort(dist)[counter]
                 if dist[min_dist_idx]<self.dist_th and min_dist_idx<n_map_features:
                     idxs.append(min_dist_idx)
                 else:
                     idxs.append(n_map_features+new_features)
                     new_features += 1
-                if img is not None:
+                if img_r is not None:
                     center = np.round(img.shape[0]/2).astype(int)
-                    point = [np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0]
+                    point = (np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0)
                     cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
         else:
             for idx,feature in enumerate(current_features):
                 idxs.append(n_map_features+new_features)
                 new_features += 1
-                if img is not None:
+                if img_r is not None:
                     center = np.round(img.shape[0]/2).astype(int)
                     point = (np.round(-((features_px['x'][idx]).astype("int")-center))+center + 5,(-(np.round(features_px['y'][idx]).astype("int")-center))+center+0)
                     cv.putText(img_r,str(idxs[-1]),point, cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv.LINE_AA)
@@ -356,7 +393,9 @@ class feature_matcher:
             cv.imshow("Detected Lines (in red) - Probabilistic Line Transform",cv.rotate(img, cv.ROTATE_180))
             cv.waitKey(1)
 
-        return idxs,new_features
+        # plt.show()
+
+        return current_features,idxs,new_features
         
 if __name__=="__main__":
     df_laser = load_bag("2022-05-23-15-50-47.bag")
