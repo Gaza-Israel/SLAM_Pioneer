@@ -4,16 +4,31 @@ import geometry_msgs.msg
 import std_msgs
 import numpy as np
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from tf.transformations import quaternion_from_euler
 from visualization_msgs.msg import Marker 
-from pyquaternion import Quaternion
 from range_finder_features_pkg.msg import features_msg
+from EKF_v3 import modelo,EKF
 class EKF_node:
-    def __init__(self):
+    def __init__(self,n_of_landmarks,sigma0,Q,dt):
+        self.n_of_landmarks = n_of_landmarks
+        self.x0 = np.zeros(n_of_landmarks*2 + 3)
+        self.x0[0] = 0
+        self.x0[1] = 0
+        self.x0[2] = 0
+        self.sigma0 = sigma0 
+        self.Q = Q 
+        self.dt = dt 
+
+        self.model = modelo(self.x0, self.dt, self.sigma0)
+        self.ekf = EKF()
+
+
+
         self.pose_publisher = rospy.Publisher("EKF/pose",PoseWithCovarianceStamped,queue_size=1)
         self.landmarks_publisher = rospy.Publisher("EKF/Landmarks",Marker,queue_size=1)
         
         self.landmarks = Marker()
-        self.landmarks.header.frame_id = "base_link"
+        self.landmarks.header.frame_id = "odom"
         self.landmarks.ns = "Landmarks points"
         self.landmarks.action = Marker.ADD
         self.landmarks.pose.orientation.w = 1
@@ -33,7 +48,7 @@ class EKF_node:
         output.pose.pose.position.y = state[1]
         output.pose.pose.position.z = 0
 
-        quaternion = Quaternion(axis=[0, 0, 1], angle=state[2]).elements
+        quaternion = quaternion_from_euler(0, 0, state[2])
 
         output.pose.pose.orientation.x = quaternion[0]
         output.pose.pose.orientation.y = quaternion[1]
@@ -42,6 +57,7 @@ class EKF_node:
 
         new_cov = self.default_cov
         #print(new_cov)
+        cov = cov[0]
         new_cov[0] = cov[0]
         new_cov[1] = cov[1]
         new_cov[5] = cov[2]
@@ -55,16 +71,18 @@ class EKF_node:
 
         h = std_msgs.msg.Header()
         h.stamp = rospy.Time.now()
-        h.frame_id = 'base_link'
+        h.frame_id = 'odom'
         output.header = h
         return output
 
     def pub_estimated_pose(self,state,cov):
+        print(state[0:3])
         pose = self.state2pose(state,cov)
         self.pose_publisher.publish(pose)
-        del pose
 
-    def pub_map_landmarks(self,landmarks):
+    def pub_map_landmarks(self,x,sigma):
+        landmarks = np.array(x[3:])
+        landmarks = np.reshape(landmarks,(-1,2))
         self.landmarks.points.clear()
         self.landmarks.header.stamp = rospy.get_rostime()
         for idx in range(landmarks.shape[0]):
@@ -85,35 +103,44 @@ class EKF_node:
         pointer.linear.y = data.linear.y
         pointer.linear.z = data.linear.z
 
-    def callback_landmarks(self,data,pointer):
-        features = []
-        features_idx = []
-        # for idx,point in enumerate(data.points):
-        #     features[idx,:] = [point.x,point.y]
-        #     features_idx[idx] = point.z
-        #
-        #       KALMAN FILTER CODE
-        #
-        pointer.points = data.points
+    def callback_landmarks(self,data):
+        features = np.empty((len(data.points),2))
+        idx_features = np.array([[]])
+        for idx,point in enumerate(data.points):
+            features[idx,:] = [point.x,point.y]
+            idx_features = np.append(idx_features,point.z)
+        self.ekf.correct_prediction(self.Q,self.model,features,idx_features)
+        self.pub_map_landmarks(self.model.x,self.model.sigma)
+
 
     def loop(self):
         last_input = geometry_msgs.msg.Twist()
-        last_features = features_msg()
         rospy.init_node('Kalman_Filter_node', anonymous=True)
         rospy.Subscriber("/cmd_vel",   geometry_msgs.msg.Twist, self.callback_geometry_message,last_input)
-        rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks,last_features)
-        r = rospy.Rate(1) # 10hz 
+        rospy.Subscriber("/laser_features",   features_msg, self.callback_landmarks)
+        r = rospy.Rate(1/(self.dt)*4) # 10hz 
         while not rospy.is_shutdown():
-            #
-            #       KALMAN FILTER CODE
-            #
-            self.pub_estimated_pose([0,0,0],np.zeros((9)))
-            land = np.array([[1,2],[2,1],[1,1],[1.5,1.5]])
-            self.pub_map_landmarks(land)
+            self.model.move((last_input.linear.x,last_input.angular.z))
 
+            self.pub_estimated_pose(self.model.x,self.model.sigma)
+            self.pub_map_landmarks(self.model.x,self.model.sigma)
 
             r.sleep()
 
 if __name__ == '__main__':
-    ekf = EKF_node()
+    n = 80
+
+    # Inicializar as incertezas 
+    infinito = 1e10
+    sigma0 = np.identity(n*2 + 3) * infinito
+    sigma0[0][0] = 0
+    sigma0[1][1] = 0
+    sigma0[2][2] = 0
+
+    Q = np.identity(2) ########## uncertanty in the measurement, bearing and range 
+    Q[0][0] = 40 * 1e-3
+    Q[1][1] = 40 * 1e-3
+    dt = 0.1
+    ekf = EKF_node(n_of_landmarks = n,sigma0 = sigma0,Q = Q,dt = dt)
     ekf.loop()
+    
