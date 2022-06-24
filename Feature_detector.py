@@ -141,13 +141,19 @@ class feature_detector:
         df["error_mse"] = error_mse
         return df
 
-    def filter_segments(self, df, img = None,online=True):
+    def filter_segments(self, df, img = None,online=True, df_last = None):
         
         if online:
             df1 = df.copy()
+            
             df1 = df1[df1['npoints']>20]
             df1['mean_error'] = df1['error_mse']/ df1['npoints']
             df1 = df1[df1['mean_error']<2]
+            
+            if df_last is not None:
+                df_last['mean_error'] = 0
+                df1 = df1.append([df_last])
+            
             df1 = df1.sort_values(by=["rs_line", "phis_line",'mean_error'])
             
             df1["rs_line_norm"] = df1["rs_line"] / self.rs_diag * self.res_map * 10
@@ -364,6 +370,7 @@ if __name__=="__main__":
     fm = feature_matcher(0.2)
     map_features = np.zeros((30,2))
     n_map_features = 0
+    first = 1
     for idx in range(1550, 2000):
         rho, theta = laser_data_extraction(df_laser, idx)
         start_time = time.time()
@@ -379,7 +386,12 @@ if __name__=="__main__":
         # df_inter_not_filtered = fd.find_intersections(df, img, window="Not Filtered") ##DESCOMENTE AQUI PARA O RELATORIO
         dst = np.array(map * 255).astype("uint8")
         cdstP = cv.cvtColor(dst, cv.COLOR_GRAY2BGR)
-        df_filtered, img2 = fd.filter_segments(df, cdstP)
+        if first:
+            df_filtered, img2 = fd.filter_segments(df, cdstP)
+            first = 0
+        else:
+            df_filtered, img2 = fd.filter_segments(df, img = cdstP,df_last = df_filtered)
+            
         print("--- %s seconds - FILTER---" % (time.time() - start_time))
         df_inter_filtered, img = fd.find_intersections(df_filtered, img, window="NOTFiltered_1")
 
@@ -388,12 +400,12 @@ if __name__=="__main__":
         print("--- %s seconds - Intersections---" % (time.time() - start_time))
         features = fd.inter2feature(df_inter_filtered)
 
-        idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
-        )
+        # idx_feature,new_features = fm.match_features(features,map_features,n_map_features,(0,0)#,img,df_inter_filtered# 
+        # )
         
-        print("--- %s seconds - End loop---" % (time.time() - start_time))
-        n_map_features += new_features
-        map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
+        # print("--- %s seconds - End loop---" % (time.time() - start_time))
+        # n_map_features += new_features
+        # map_features[idx_feature,:] = np.reshape(np.array([[features['x']],[features['y']]]).T,(-1,2))
 
 
         print("--------------------------------")
