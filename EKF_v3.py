@@ -22,7 +22,8 @@ class EKF():
             # print("Rm", land_range_bearing[0], "Tm", np.rad2deg(land_range_bearing[1]))
             modelo.x_estimate = modelo.x_estimate + self.K @ (land_range_bearing - self.z_predict)
             # print("Re", self.z_predict[0], "Te", np.rad2deg(self.z_predict[1]))
-            # print((land_range_bearing[0] - self.z_predict[0]), self.K[0])
+            #print((land_range_bearing[0] - self.z_predict[0]),'GAIN' ,self.K[0])
+            print('GAIN  ' ,self.K[0])
             # print("Raio = ", (self.z_predict[0]), modelo.x[0])
             # print("Phi = ", (np.rad2deg(self.z_predict[1])))
 
@@ -144,7 +145,7 @@ class modelo():
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
         Res[0][0] = 1e-3
         Res[1][1] = 1e-3
-        Res[2][2] = np.deg2rad(0.5)
+        Res[2][2] = np.deg2rad(0.1)
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)
