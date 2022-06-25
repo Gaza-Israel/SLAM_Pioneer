@@ -9,10 +9,10 @@ from IPython import display
 
 class landmark():
     def __init__(self, landmarks):
-        self.landmark_g = landmarks.copy() 
-        self.landmark_r = landmarks.copy()
-        self.landmark_noise_r = landmarks.copy()
-        self.landmark_noise_g = landmarks.copy()
+        self.landmark_g = np.array(landmarks.copy()).astype(np.float) 
+        self.landmark_r = np.array(landmarks.copy()).astype(np.float)
+        self.landmark_noise_r = np.array(landmarks.copy()).astype(np.float)
+        self.landmark_noise_g = np.array(landmarks.copy()).astype(np.float)
 
 
 plt.close('all')
@@ -42,7 +42,7 @@ u = [1, np.deg2rad(0)]
 dt = 1
 
 mean = 0
-std = 1e-10
+std = 1e-2
 num_samples = 2
 np.random.seed(10) 
 noise_fact = 1e-10
@@ -100,11 +100,14 @@ def gera_sinal_landmark(ekf, land):
         s = np.sin(-theta)
         R_frame = np.array([[c, -s], [s, c]])
         noise_land = np.array(np.random.normal(mean, std, size=num_samples))
-        print("NOISE LANDMARK")
+        noise_land = noise_land.reshape(1,2)
+        
+        print("NOISE LANDMARK")        
+        
         land.landmark_r[k] = np.array(land.landmark_g[k] @ R_frame.T)
-        land.landmark_noise_g[k] = np.array(np.add(land.landmark_g[k].astype(float), noise_land.astype(float)))
+        land.landmark_noise_g[k] = land.landmark_g[k] +noise_land
         land.landmark_noise_r[k] = np.array(land.landmark_noise_g[k] @ R_frame.T)
-        print(land.landmark_g[k], noise_land, land.landmark_noise_g[k].astype(float))
+        print(land.landmark_g[k], noise_land, land.landmark_noise_g[k])
     
         k = k + 1
 
