@@ -17,8 +17,8 @@ class landmark():
 
 plt.close('all')
 
-# l = np.array([[5,5], [0,5], [15,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
-l = np.array([[5,5], [7,7], [10,10]]) # Vetor com a posição de todas as landmarks no frame global 
+l = np.array([[5,5], [0,5], [14,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
+# l = np.array([[5,5], [0,5], [15,10], [-5,10]])
 n = len(l) # number of landmarks 
 
 # inicializa o estado inicial com n*2 landmark e pose (3)
@@ -35,14 +35,14 @@ sigma0[2][2] = 0
 
 infinito = 1e20
 Q = np.identity(2) # uncertanty in the measurement, bearing and range 
-Q[0][0] = 1e-2
-Q[1][1] = 1e-2
+Q[0][0] = 1
+Q[1][1] = 1
 
-u = [0.5, np.deg2rad(3)]
+u = [1, np.deg2rad(8)]
 dt = 1
 
 mean = 0
-std = 1e-2
+std = 0.12e0
 num_samples = 2
 np.random.seed(10) 
 noise_fact = 1e-10
@@ -152,8 +152,8 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.scatter(l_xc, l_yc, label = 'landmark controled', marker = 's')
     ax.scatter(l_xn, l_yn, label = 'landmark noise', marker = 's')
 
-    ax.set_xlim([-20, 30])
-    ax.set_ylim([-20, 30])
+    ax.set_xlim([-15,15])
+    ax.set_ylim([-1,20])
     ax.set_xlabel('x coordinate [m]')
     ax.set_ylabel('y coordinate [m]')
     ax.legend()
@@ -161,7 +161,7 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.grid()
 
 # run the animation
-ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=150, interval=50, repeat=False)
+ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=100, interval=50, repeat=False)
 ani.save('myAnimation.gif', writer='imagemagick', fps=30)
 # plt.show()
 
