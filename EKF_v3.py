@@ -142,9 +142,9 @@ class modelo():
         n = len(self.x_estimate)
 
         Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1e-3
-        Res[1][1] = 1e-3
-        Res[2][2] = np.deg2rad(0.5)
+        Res[0][0] = 1e-4
+        Res[1][1] = 1e-4
+        Res[2][2] = np.deg2rad(1)
 
         G = np.identity(n)
         G[0][2] = -np.sin(w * dt + theta) * (v * dt)

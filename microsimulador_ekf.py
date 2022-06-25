@@ -18,7 +18,7 @@ class landmark():
 plt.close('all')
 
 # l = np.array([[5,5], [0,5], [15,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
-l = np.array([[5,5]])
+l = np.array([[5,5], [7,7], [10,10]]) # Vetor com a posição de todas as landmarks no frame global 
 n = len(l) # number of landmarks 
 
 # inicializa o estado inicial com n*2 landmark e pose (3)
@@ -35,10 +35,10 @@ sigma0[2][2] = 0
 
 infinito = 1e20
 Q = np.identity(2) # uncertanty in the measurement, bearing and range 
-Q[0][0] = 1e-1
-Q[1][1] = 1e-1
+Q[0][0] = 1e-2
+Q[1][1] = 1e-2
 
-u = [1, np.deg2rad(0)]
+u = [0.5, np.deg2rad(3)]
 dt = 1
 
 mean = 0
@@ -101,13 +101,10 @@ def gera_sinal_landmark(ekf, land):
         R_frame = np.array([[c, -s], [s, c]])
         noise_land = np.array(np.random.normal(mean, std, size=num_samples))
         noise_land = noise_land.reshape(1,2)
-        
-        print("NOISE LANDMARK")        
-        
+                
         land.landmark_r[k] = np.array(land.landmark_g[k] @ R_frame.T)
         land.landmark_noise_g[k] = land.landmark_g[k] +noise_land
         land.landmark_noise_r[k] = np.array(land.landmark_noise_g[k] @ R_frame.T)
-        print(land.landmark_g[k], noise_land, land.landmark_noise_g[k])
     
         k = k + 1
 
@@ -122,7 +119,6 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
 
     # add_noise(n_ekf)
     # n_ekf.move(u)
-    print(i)
     gera_sinal_landmark(real_ekf_model, land)
     real_ekf_model.move(u)
     real_ekf_filter.correct_prediction(Q, real_ekf_model, land.landmark_noise_g, range(0,n+1))
@@ -156,8 +152,8 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.scatter(l_xc, l_yc, label = 'landmark controled', marker = 's')
     ax.scatter(l_xn, l_yn, label = 'landmark noise', marker = 's')
 
-    ax.set_xlim([-1,20])
-    ax.set_ylim([-1,10])
+    ax.set_xlim([-20, 30])
+    ax.set_ylim([-20, 30])
     ax.set_xlabel('x coordinate [m]')
     ax.set_ylabel('y coordinate [m]')
     ax.legend()
@@ -165,7 +161,7 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.grid()
 
 # run the animation
-ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=20, interval=50, repeat=False)
+ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=150, interval=50, repeat=False)
 ani.save('myAnimation.gif', writer='imagemagick', fps=30)
 # plt.show()
 
