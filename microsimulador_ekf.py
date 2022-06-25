@@ -16,9 +16,14 @@ class landmark():
 
 
 plt.close('all')
+l = []
+for i in range(0, 10):
+    a1 = randint(-10, 10)
+    a2 = randint(0, 10)
+    l.append([a1, a2])
+l = np.array(l)
 
-l = np.array([[5,5], [0,5], [14,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
-# l = np.array([[5,5], [0,5], [15,10], [-5,10]])
+# l = np.array([[5,5], [0,5], [14,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
 n = len(l) # number of landmarks 
 
 # inicializa o estado inicial com n*2 landmark e pose (3)
@@ -35,26 +40,19 @@ sigma0[2][2] = 0
 
 infinito = 1e20
 Q = np.identity(2) # uncertanty in the measurement, bearing and range 
-Q[0][0] = 1
-Q[1][1] = 1
+Q[0][0] = 1e-1 * 2
+Q[1][1] = 1e-1 * 2
 
 u = [1, np.deg2rad(8)]
 dt = 1
 
 mean = 0
-std = 0.12e0
+std = 0.12e-1
 num_samples = 2
 np.random.seed(10) 
-noise_fact = 1e-10
-
-# teste = ekf.modelo(x0, dt, sigma0)
-# teste_ekf = ekf()
-# obs = np.array([[2, 2], [1,1]])
-# teste_ekf.correct_prediction(Q, teste, obs, [1, 2])
-# print(teste.x)
+noise_fact = 2e-2
 
 np.set_printoptions(suppress=True, formatter={'float_kind':'{:16.10f}'.format}, linewidth=250)
-# teste = ekf.modelo(x0, dt, sigma0)
 
 ## Parte para plotar 
 # create empty lists for the x and y data
@@ -73,20 +71,17 @@ l_yn = []
 
 # create the figure and axes objects
 fig, ax = plt.subplots()
-# function that draws each frame of the animation
 
 controled_ekf = EKF_v3.modelo(x0, dt, sigma0, True)
 noise_ekf = EKF_v3.modelo(x0, dt, sigma0, True)
 real_ekf_model = EKF_v3.modelo(x0, dt, sigma0, False)
 real_ekf_filter = EKF_v3.EKF()
 
-# l = np.array([[3,3]]) # Vetor com a posição de todas as landmarks no frame global 
 
 land = landmark(l)
 
 def gera_sinal_landmark(ekf, land):
     # a partir da posicao atual do ekf, e da posicao global das landmarks, gera a posicao relativa entre as landmarks e o robo, com ruido
-
     x = ekf.x[0]
     y = ekf.x[1]
     theta = ekf.x[2]
@@ -117,8 +112,9 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
 
     c_ekf.move(u)
 
-    # add_noise(n_ekf)
-    # n_ekf.move(u)
+    add_noise(n_ekf)
+    n_ekf.move(u)
+
     gera_sinal_landmark(real_ekf_model, land)
     real_ekf_model.move(u)
     real_ekf_filter.correct_prediction(Q, real_ekf_model, land.landmark_noise_g, range(0,n+1))
@@ -146,7 +142,7 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.clear()
 
     ax.plot(x_c, y_c, label = 'controled', linestyle='dashed')
-    # ax.plot(x_n, y_n, label = 'noise')
+    ax.plot(x_n, y_n, label = 'noise')
     ax.plot(ekf_x, ekf_y, label = 'EKF')
 
     ax.scatter(l_xc, l_yc, label = 'landmark controled', marker = 's')
@@ -161,7 +157,7 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     ax.grid()
 
 # run the animation
-ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=100, interval=50, repeat=False)
+ani = FuncAnimation(fig, animate, fargs=(u, controled_ekf, noise_ekf, real_ekf_model, real_ekf_filter, land), frames=80, interval=50, repeat=False)
 ani.save('myAnimation.gif', writer='imagemagick', fps=30)
 # plt.show()
 
