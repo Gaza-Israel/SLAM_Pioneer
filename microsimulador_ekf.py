@@ -40,14 +40,23 @@ sigma0[2][2] = 0
 
 infinito = 1e20
 Q = np.identity(2) # uncertanty in the measurement, bearing and range 
+<<<<<<< HEAD
 Q[0][0] = 1e-1 * 2
 Q[1][1] = 1e-1 * 2
+=======
+Q[0][0] = 1e-1 * 2e10
+Q[1][1] = 1e-1 * 2e10
+>>>>>>> parent of 5771319 (l)
 
 u = [1, np.deg2rad(8)]
 dt = 1
 
 mean = 0
+<<<<<<< HEAD
 std = 1e-2
+=======
+std = 0.12e-1
+>>>>>>> parent of 5771319 (l)
 num_samples = 2
 np.random.seed(10) 
 noise_fact = 2e-2
@@ -108,6 +117,15 @@ def add_noise(ekf):
     ekf.x[1] = ekf.x[1] + randint(-100,100)/100 * noise_fact
     ekf.x[2] = ekf.x[2] + randint(-100,100)/100 * noise_fact
 
+<<<<<<< HEAD
+=======
+def plot_cov_elipse(ekf_model):
+    print(ekf_model.sigma)
+
+
+
+
+>>>>>>> parent of 5771319 (l)
 def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
 
     c_ekf.move(u)
@@ -119,6 +137,11 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     real_ekf_model.move(u)
     real_ekf_filter.correct_prediction(Q, real_ekf_model, land.landmark_noise_g, range(0,n+1))
 
+<<<<<<< HEAD
+=======
+    plot_cov_elipse(real_ekf_model)
+
+>>>>>>> parent of 5771319 (l)
     # Landmarks com ruido 
     l_xn = land.landmark_noise_g[:,0]
     l_yn = land.landmark_noise_g[:,1]
