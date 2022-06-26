@@ -21,25 +21,6 @@ class EKF():
             land_range_bearing = np.array([self.r_measure, self.phi_measure])
             # print("Rm", land_range_bearing[0], "Tm", np.rad2deg(land_range_bearing[1]))
             modelo.x_estimate = modelo.x_estimate + self.K @ (land_range_bearing - self.z_predict)
-<<<<<<< HEAD
-            # print("Re", self.z_predict[0], "Te", np.rad2deg(self.z_predict[1]))
-            #print((land_range_bearing[0] - self.z_predict[0]),'GAIN' ,self.K[0])
-            print('GAIN  ' ,self.K[0])
-            # print("Raio = ", (self.z_predict[0]), modelo.x[0])
-            # print("Phi = ", (np.rad2deg(self.z_predict[1])))
-
-            # print("Raio = ", (self.z_predict[0] - land_range_bearing[0]), "Kalman = ", self.K[0])
-            # print("Phi = ", (np.rad2deg(self.z_predict[1]- land_range_bearing[1])), "Kalman = ", self.K[1])
-
-            # print((np.rad2deg(land_range_bearing[1]) - np.rad2deg(self.z_predict[1])), self.K[1])
-            # print(self.K @ (land_range_bearing - self.z_predict))
-            # print(((land_range_bearing - self.z_predict)))
-            # print("Ganho Kalman", self.K )
-            # print("Re", self.z_predict[0], "Te", np.rad2deg(self.z_predict[1])))
-            # print("Dif medicao", (land_range_bearixng - self.z_predict))
-            # print("Raio medido = ", self.r, "Raio robo = ", self.z_predict[0])
-=======
->>>>>>> parent of 5771319 (l)
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
             modelo.sigma_estimate = (I - self.K @ self.H) @ modelo.sigma_estimate
@@ -89,10 +70,6 @@ class EKF():
         q = delta.T @ delta
         # print(pos_robo[0], pos_land[0])
         self.z_predict = np.array([np.sqrt(q), np.arctan2(delta[1], delta[0]) - theta]) # prevendo a posicao da landmark  
-<<<<<<< HEAD
-        # print("raio = ", self.z_predict[0], "theta = ", np.rad2deg(self.z_predict[1]), np.rad2deg(theta))
-=======
->>>>>>> parent of 5771319 (l)
 
         h = 1/q * np.array(([-np.sqrt(q) * delta[0], -np.sqrt(q) * delta[1], 0, np.sqrt(q) * delta[0], np.sqrt(q) * delta[0]], 
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
