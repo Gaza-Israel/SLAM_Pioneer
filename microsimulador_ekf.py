@@ -47,7 +47,7 @@ u = [1, np.deg2rad(8)]
 dt = 1
 
 mean = 0
-std = 0.12e-1
+std = 1e-2
 num_samples = 2
 np.random.seed(10) 
 noise_fact = 2e-2
