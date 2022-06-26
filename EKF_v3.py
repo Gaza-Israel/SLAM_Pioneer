@@ -19,7 +19,24 @@ class EKF():
             self.obs_predict(j, landmarks[k], modelo)
             self.KalmanGain(modelo, Q)
             land_range_bearing = np.array([self.r_measure, self.phi_measure])
+            # print("Rm", land_range_bearing[0], "Tm", np.rad2deg(land_range_bearing[1]))
             modelo.x_estimate = modelo.x_estimate + self.K @ (land_range_bearing - self.z_predict)
+            # print("Re", self.z_predict[0], "Te", np.rad2deg(self.z_predict[1]))
+            #print((land_range_bearing[0] - self.z_predict[0]),'GAIN' ,self.K[0])
+            print('GAIN  ' ,self.K[0])
+            # print("Raio = ", (self.z_predict[0]), modelo.x[0])
+            # print("Phi = ", (np.rad2deg(self.z_predict[1])))
+
+            # print("Raio = ", (self.z_predict[0] - land_range_bearing[0]), "Kalman = ", self.K[0])
+            # print("Phi = ", (np.rad2deg(self.z_predict[1]- land_range_bearing[1])), "Kalman = ", self.K[1])
+
+            # print((np.rad2deg(land_range_bearing[1]) - np.rad2deg(self.z_predict[1])), self.K[1])
+            # print(self.K @ (land_range_bearing - self.z_predict))
+            # print(((land_range_bearing - self.z_predict)))
+            # print("Ganho Kalman", self.K )
+            # print("Re", self.z_predict[0], "Te", np.rad2deg(self.z_predict[1])))
+            # print("Dif medicao", (land_range_bearixng - self.z_predict))
+            # print("Raio medido = ", self.r, "Raio robo = ", self.z_predict[0])
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
             modelo.sigma_estimate = (I - self.K @ self.H) @ modelo.sigma_estimate
@@ -34,6 +51,7 @@ class EKF():
         x = modelo.x_estimate[0]
         y = modelo.x_estimate[1]
         theta = modelo.x_estimate[2]
+        # print(x,y,theta, modelo.x[0], modelo.x[1], modelo.x[2])
         
         j = int(j+1)
         land_x = land_pos[0] 
@@ -58,10 +76,17 @@ class EKF():
         deltay = (land_y - y)
         self.r_measure  = np.sqrt((deltax)**2 + (deltay)**2)
         self.phi_measure  = np.arctan2(deltay, deltax) - theta
+        # print("Xr ", x, "Lx", land_x, "Yr", y, "Ly", land_y)
+        # print("R", self.r_measure, "Phi", np.rad2deg(self.phi_measure))
+
         pos_robo = np.array([x,y])
+        # print("pos", pos_robo[0], pos_land[0])
         delta = np.array(pos_land - pos_robo)
+        # print("delrta", delta[0], delta[1])
         q = delta.T @ delta
+        # print(pos_robo[0], pos_land[0])
         self.z_predict = np.array([np.sqrt(q), np.arctan2(delta[1], delta[0]) - theta]) # prevendo a posicao da landmark  
+        # print("raio = ", self.z_predict[0], "theta = ", np.rad2deg(self.z_predict[1]), np.rad2deg(theta))
 
         h = 1/q * np.array(([-np.sqrt(q) * delta[0], -np.sqrt(q) * delta[1], 0, np.sqrt(q) * delta[0], np.sqrt(q) * delta[0]], 
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
@@ -100,6 +125,7 @@ class modelo():
         dth = u[1]*self.dt
         dx = F.T @ np.array([np.cos(self.x[2]+ dth)*dist, np.sin(self.x[2]+ dth)*dist, dth])
         self.x_estimate = np.add(self.x, dx)
+        # print(self.x, "\n", dx,  "\n",self.x_estimate)
         
         if self.teste:
             self.x = self.x_estimate
@@ -116,7 +142,7 @@ class modelo():
         dt = self.dt
         n = len(self.x_estimate)
 
-        Res = np.zeros((n,n)) #  User defined uncertainty in the range and bearing of the model 
+        Res = np.zeros((n,n)) # FALTA COMPLETAR - User defined uncertainty in the range and bearing of the model 
         Res[0][0] = 1e-3
         Res[1][1] = 1e-3
         Res[2][2] = np.deg2rad(0.1)
@@ -127,35 +153,38 @@ class modelo():
         self.sigma = G @ self.sigma @ (G.T) + Res 
 
 if __name__ == '__main__':
-    pass 
-    # n = 1 # number of landmarks 
 
-    # # inicializa o estado inicial com n*2 landmark e pose (3)
-    # x0 = np.zeros(n*2 + 3)
-    # x0[0] = 0
-    # x0[1] = 0
-    # x0[2] = 0
+    n = 1 # number of landmarks 
 
-    # # Inicializar as incertezas 
-    # infinito = 10000
-    # sigma0 = np.identity(n*2 + 3) * infinito
-    # sigma0[0][0] = 0
-    # sigma0[1][1] = 0
-    # sigma0[2][2] = 0
+    # inicializa o estado inicial com n*2 landmark e pose (3)
+    x0 = np.zeros(n*2 + 3)
+    x0[0] = 0
+    x0[1] = 0
+    x0[2] = 0
 
-    # Q = np.identity(2) # uncertanty in the measurement, bearing and range 
-    # Q[0][0] = 1
-    # Q[1][1] = 1
+    # Inicializar as incertezas 
+    infinito = 10000
+    sigma0 = np.identity(n*2 + 3) * infinito
+    sigma0[0][0] = 0
+    sigma0[1][1] = 0
+    sigma0[2][2] = 0
 
-    # u = [1,0]
-    # dt = 1
+    Q = np.identity(2) # uncertanty in the measurement, bearing and range 
+    Q[0][0] = 1
+    Q[1][1] = 1
 
-    # np.set_printoptions(suppress=True, formatter={'float_kind':'{:16.3f}'.format}, linewidth=10)
-    # teste = modelo(x0, dt, sigma0)
-    # teste_ekf = EKF()
-    # obs = np.array([[2, 2]])
-    # teste_ekf.correct_prediction(Q, teste, obs, [0])
+    u = [1,0]
+    dt = 1
 
+    np.set_printoptions(suppress=True, formatter={'float_kind':'{:16.3f}'.format}, linewidth=10)
+    teste = modelo(x0, dt, sigma0)
+    teste_ekf = EKF()
+    obs = np.array([[2, 2]])
+    teste_ekf.correct_prediction(Q, teste, obs, [0])
+
+    # print(np.arctan2(1,1), np.tan(np.arctan2(1,1)))
+    # print(np.arctan2(1,0), np.tan(np.arctan2(1,0)))
+    # print(np.arctan2(0,1), np.tan(np.arctan2(0,1)))
 
 
 
