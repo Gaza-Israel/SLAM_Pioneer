@@ -23,7 +23,7 @@ for i in range(0, 10):
     l.append([a1, a2])
 l = np.array(l)
 
-# l = np.array([[5,5], [0,5], [14,10], [-5,10], [-10,10]]) # Vetor com a posição de todas as landmarks no frame global 
+l = np.array([[0,10],[0,5]]) # Vetor com a posição de todas as landmarks no frame global 
 n = len(l) # number of landmarks 
 
 # inicializa o estado inicial com n*2 landmark e pose (3)
@@ -40,14 +40,14 @@ sigma0[2][2] = 0
 
 infinito = 1e20
 Q = np.identity(2) # uncertanty in the measurement, bearing and range 
-Q[0][0] = 1e-1 * 2e10
-Q[1][1] = 1e-1 * 2e10
+Q[0][0] = 1e-1
+Q[1][1] = 1e-1
 
 u = [1, np.deg2rad(8)]
 dt = 1
 
 mean = 0
-std = 0.12e-1
+std = 0.12e-2
 num_samples = 2
 np.random.seed(10) 
 noise_fact = 2e-2
@@ -108,8 +108,8 @@ def add_noise(ekf):
     ekf.x[1] = ekf.x[1] + randint(-100,100)/100 * noise_fact
     ekf.x[2] = ekf.x[2] + randint(-100,100)/100 * noise_fact
 
-def plot_cov_elipse(ekf_model):
-    print(ekf_model.sigma)
+# def plot_cov_elipse(ekf_model):
+    # print(ekf_model.sigma)
 
 
 
@@ -125,7 +125,7 @@ def animate(i, u, c_ekf, n_ekf, real_ekf_model, real_ekf_filter, land):
     real_ekf_model.move(u)
     real_ekf_filter.correct_prediction(Q, real_ekf_model, land.landmark_noise_g, range(0,n+1))
 
-    plot_cov_elipse(real_ekf_model)
+    # plot_cov_elipse(real_ekf_model)
 
     # Landmarks com ruido 
     l_xn = land.landmark_noise_g[:,0]
