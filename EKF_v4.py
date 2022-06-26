@@ -5,23 +5,21 @@ import matplotlib.pyplot as plt
 
 class EKF():
     def __init__(self):
-        self.H = 0 # Jacobian for the observation
-        self.z_predict = 0 # Predicted location of the given landmark 
-        self.K = 0 # Kalmann Gain
-        self.conta_landmarks = 0 
-        self.r_measure = 0
-        self.phi_measure = 0
+        self.H = 0                  # Jacobian for the observation
+        self.z_predict = 0          # Predicted location of the given landmark 
+        self.K = 0                  # Kalmann Gain
+        self.conta_landmarks = 0    # Contador do numero de landmarks ja observadas
+        self.r_measure = 0          # Raio da medicao (range)
+        self.phi_measure = 0        # Angulo da medicao (bearing)
 
-    def correct_prediction(self, Q, modelo, landmarks, idx_landmarks):
+    def correct_prediction(self, Q, modelo, landmarks, idx_landmarks): # Corrige o vetor de estados e covariancias com base no ganho de kalman 
         k = 0
-        for i in landmarks:
+        for i in landmarks:     # Itera para todas as landamarks sendo observadas atualmente 
             j = idx_landmarks[k] 
-            self.obs_predict(j, landmarks[k], modelo)
-            self.KalmanGain(modelo, Q)
+            self.obs_predict(j, landmarks[k], modelo)   # Preve a posicao das landmarks 
+            self.KalmanGain(modelo, Q)                  # Calcula o ganho de Kalman
             land_range_bearing = np.array([self.r_measure, self.phi_measure])
             modelo.x_estimate = modelo.x_estimate + self.K @ -(land_range_bearing - self.z_predict)
-            # print("Diferença: ", (land_range_bearing - self.z_predict))
-            # print("Ganho", self.K @ (land_range_bearing - self.z_predict))
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
             modelo.sigma_estimate = (I - self.K @ self.H) @ modelo.sigma_estimate
@@ -47,7 +45,7 @@ class EKF():
             modelo.x[3 + 2*(j-1)] = land_x
             modelo.x[4 + 2*(j-1)] = land_y
             modelo.x_estimate[3 + 2*(j-1)] = land_x
-            modelo.x_estimate[4 + 2*(j-1)] = land_y
+            modelo.x_estimate[4 + 2*(j-1)] = land_y 
             self.conta_landmarks = self.conta_landmarks + 1
         else:
             # Se ela ja foi observada, sua posicao e a que esta salva no vetor de estados 
@@ -92,15 +90,18 @@ class modelo():
 
     def move(self, u): # updates de pose and covariance of the robot for a given control input 
         n = len(self.x_estimate)
-        F = np.zeros((3,n))
-        F[0][0] = 1
-        F[1][1] = 1
-        F[2][2] = 1
 
-        dist  = u[0]*self.dt
-        dth = u[1]*self.dt
-        dx = F.T @ np.array([np.cos(self.x[2]+ dth)*dist, np.sin(self.x[2]+ dth)*dist, dth])
-        self.x_estimate = np.add(self.x, dx)
+        v = u[0]
+        w = u[1]    
+        theta = self.x[2]
+        dt = self.dt
+
+        if w == 0:
+            w = 1e-10
+
+        self.x_estimate[0] = -v/w * np.sin(theta) + v/w * np.sin(theta + w * dt) + self.x[0]
+        self.x_estimate[1] = v/w * np.cos(theta) - v/w * np.cos(theta + w * dt) + self.x[1]
+        self.x_estimate[2] = w * dt + self.x[2]
         
         if self.teste:
             self.x = self.x_estimate
@@ -113,18 +114,23 @@ class modelo():
         # This changes the uncertainty in the robot pose but not in the landmar position
         v = u[0]
         w = u[1]
+
+        if w == 0:
+            w = 1e-10
+
         theta = self.x_estimate[2]
         dt = self.dt
         n = len(self.x_estimate)
 
         Res = np.zeros((n,n)) #  User defined uncertainty in the range and bearing of the model 
-        Res[0][0] = 1e-1
-        Res[1][1] = 1e-1
-        Res[2][2] = np.deg2rad(1)
+        Res[0][0] = 1e-3
+        Res[1][1] = 1e-3
+        Res[2][2] = np.deg2rad(0.1)
 
         G = np.identity(n)
-        G[0][2] = -np.sin(w * dt + theta) * (v * dt)
-        G[1][2] = np.cos(w * dt + theta) * (v * dt)
+        G[0][2] = -v/w * np.cos(theta) + v/w * np.cos(theta + w * dt)
+        G[1][2] = -v/w * np.sin(theta) + v/w * np.sin(theta + w * dt)
+        G[2][2] = 1
         self.sigma = G @ self.sigma @ (G.T) + Res 
 
 if __name__ == '__main__':
@@ -148,16 +154,16 @@ if __name__ == '__main__':
     Q[0][0] = 1
     Q[1][1] = 1
 
-    u = [1,0]
+    u = [1,1]
     dt = 1
 
     np.set_printoptions(suppress=True, formatter={'float_kind':'{:16.3f}'.format}, linewidth=100)
     teste = modelo(x0, dt, sigma0, True)
-    # print(teste.x)
-    print(teste.sigma)
+    # print(teste.x)     
+    # print(teste.sigma)
     teste.move(u)
     # print(teste.x)
-    print(teste.sigma)
+    # print(teste.sigma)
     teste_ekf = EKF()
     obs = np.array([[2, 2]])
     teste_ekf.correct_prediction(Q, teste, obs, [0])
