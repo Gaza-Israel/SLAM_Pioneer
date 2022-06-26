@@ -20,17 +20,12 @@ class EKF():
             self.KalmanGain(modelo, Q)
             land_range_bearing = np.array([self.r_measure, self.phi_measure])
             modelo.x_estimate = modelo.x_estimate + self.K @ (land_range_bearing - self.z_predict)
-            
-            print('DIFF', self.K @ (land_range_bearing - self.z_predict))
-            print('self.K', self.K)
-            print('modelo.x_estimate', modelo.x_estimate)
             l,m = ((self.K @ self.H).shape)
             I = np.identity(l)
             modelo.sigma_estimate = (I - self.K @ self.H) @ modelo.sigma_estimate
             k = k + 1
-        # print('modelo_estimate',modelo.x_estimate)
+
         modelo.sigma = modelo.sigma_estimate
-        # print('SIGMA', modelo.sigma_estimate)
         modelo.x = modelo.x_estimate
 
     def obs_predict(self, j, land_pos, modelo): 
@@ -57,8 +52,6 @@ class EKF():
             land_x_antigo = modelo.x[3 + 2*(j-1)]
             land_y_antigo = modelo.x[4 + 2*(j-1)]
             pos_land = np.array([land_x_antigo, land_y_antigo])
-            # print('pos_land', pos_land)
-            # pos_land = np.array([land_x, land_y])
 
         # Transformando a medida de cartesiano para range bearing
         deltax = (land_x - x)
@@ -69,8 +62,7 @@ class EKF():
         delta = np.array(pos_land - pos_robo)
         q = delta.T @ delta
         self.z_predict = np.array([np.sqrt(q), np.arctan2(delta[1], delta[0]) - theta]) # prevendo a posicao da landmark  
-        
-        
+
         h = 1/q * np.array(([-np.sqrt(q) * delta[0], -np.sqrt(q) * delta[1], 0, np.sqrt(q) * delta[0], np.sqrt(q) * delta[0]], 
                     [delta[1], -delta[0], -q, -delta[1], delta[0]]))
        
@@ -81,18 +73,11 @@ class EKF():
         F[3][3 + 2*(j-1)] = 1
         F[4][4 + 2*(j-1)] = 1
         self.H = h @ F 
-        # print('pos_land',pos_land)
-        # print('pos_robo',pos_robo)
 
     def KalmanGain(self, modelo, Q):
         sigma = modelo.sigma
         H = (self.H)
         self.K = sigma @ (H.T) @ np.linalg.inv(H @ sigma @ (H.T) + Q)
-        
-        # self.K[3,1] = self.K[-1,1]*0.1
-        # self.K[3,0] = self.K[-1,0]*0.1
-        
-
 
 class modelo():
     def __init__(self, x0, dt, sigma0, teste): # x = [x, y, theta], u = [velocity, angular_velocity] 
